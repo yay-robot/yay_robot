@@ -21,7 +21,6 @@ sudo apt update && sudo apt install ffmpeg
 4. Install packages
 ```bash
 pip install -e .
-pip install -e src/robomimic # diffusion policy
 ```
 
 5. (Optional) Install package for audio recording
