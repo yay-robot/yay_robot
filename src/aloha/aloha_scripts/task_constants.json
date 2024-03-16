@@ -1,0 +1,21 @@
+{
+  "pen": {
+    "owner": "David",
+    "dataset_dir": "/scr2/davidyuan/datasets/3_1_pen",
+    "episode_length": 400,
+    "dataset_name_prefix": ""
+  },
+  "pen_complex": {
+    "owner": "David",
+    "dataset_dir": "/scr2/davidyuan/datasets/3_3_pen_complex",
+    "episode_length": 500,
+    "dataset_name_prefix": ""
+  },
+
+  "candy_new": {
+    "owner": "David",
+    "dataset_dir": "/scr2/davidyuan/datasets/candy_new",
+    "episode_length": 700,
+    "dataset_name_prefix": ""
+  }
+}

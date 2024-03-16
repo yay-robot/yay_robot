@@ -1,0 +1,32 @@
+
+conda activate aloha
+cd /home/lucyshi/interbotix_ws/src/aloha/aloha_scripts
+
+./auto_record.sh aloha_wear_shoe 2
+
+# do not run # python3 record_episodes.py --task_name aloha_wear_shoe --episode_idx 0
+
+# do not run # python3 visualize_episodes.py  --dataset_dir /scr2/tonyzhao/datasets/aloha_wear_shoe --episode_idx 0
+
+# do not run # python3 replay_episodes.py  --dataset_dir /scr2/tonyzhao/datasets/aloha_wear_shoe --episode_idx 0
+
+
+### compatibility check
+
+cd /home/lucyshi/interbotix_ws/src/act
+
+python3 imitate_episodes.py \
+--task_name aloha_wear_shoe \
+--ckpt_dir /scr2/tonyzhao/train_logs/test_aloha \
+--policy_class ACT --kl_weight 80 --chunk_size 90 --hidden_dim 512 --batch_size 4 --dim_feedforward 3000 \
+--num_epochs 5000  --lr 1e-5 \
+--seed 0
+
+
+python3 record_episodes.py --task_name test_current --episode_idx 0
+
+# test error
+
+python3 record_episodes.py --task_name aloha_test_error --episode_idx 0
+
+python3 visualize_episodes.py --dataset_dir /scr2/tonyzhao/datasets/aloha_test_error/ --episode_idx 0

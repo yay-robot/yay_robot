@@ -1,0 +1,55 @@
+torch
+torchvision
+tqdm
+wandb
+ipdb
+numpy==1.23.1 # for h5py_cache
+matplotlib
+moviepy 
+imageio
+opencv-python
+openai-whisper
+gym
+
+# act
+pyquaternion
+pyyaml
+rospkg
+pexpect
+mujoco==2.3.3
+dm_control==1.0.9
+einops
+packaging
+h5py
+ipython
+
+# aloha
+modern_robotics
+pyrealsense2
+h5py_cache
+
+# record audio
+sounddevice
+wavio
+pyaudio
+SpeechRecognition
+roslibpy
+
+# keyboard input
+pynput
+
+# memory
+psutil
+
+# llm
+transformers
+
+# clip
+ftfy
+clip@git+https://github.com/openai/CLIP.git
+
+# instructor
+scikit-learn
+
+# augmentation
+albumentations
