@@ -50,6 +50,3 @@ clip@git+https://github.com/openai/CLIP.git
 
 # instructor
 scikit-learn
-
-# augmentation
-albumentations

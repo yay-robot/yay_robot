@@ -125,7 +125,7 @@ def save_videos(video, dt, options=None, video_path=None, instructions=None, cro
     font_scale = 1.5 
     font_thickness = 3
 
-    option_labels = {0: "action", 1: "instruction", 2: "correction", 3: "dagger", 4: "language-dagger", -1: "new instruction"}
+    option_labels = {0: "action", 1: "instruction", 2: "correction", 3: "dagger", -1: "new instruction"}
     current_instruction = None
 
     # Helper function to update the current instruction

@@ -8,19 +8,17 @@ from torch.utils.data import DataLoader, ConcatDataset, Sampler
 import cv2
 import json
 from torchvision import transforms
-import albumentations as A
 import sys
-sys.path.append('/home/lucyshi/code/language-dagger/src') # to import aloha
-sys.path.append('/iris/u/lucyshi/language-dagger/src') # for cluster
+sys.path.append('/home/lucyshi/code/yay_robot/src') # to import aloha
+sys.path.append('/iris/u/lucyshi/yay_robot/src') # for cluster
 
 from aloha_pro.aloha_scripts.utils import crop_resize
 
 CROP_TOP = True # hardcode
-AUGMENT = False # Light augmentation from albumentations
-FILTER_MISTAKES = True # Filter out mistakes from the dataset even if not use_language or not use_one_hot
+FILTER_MISTAKES = True # Filter out mistakes from the dataset even if not use_language
 
 class EpisodicDataset(torch.utils.data.Dataset):
-    def __init__(self, episode_ids, dataset_dir, camera_names, norm_stats, max_len=None, command_list=None, use_language=False, language_encoder=None, use_one_hot=False, policy_class=None):
+    def __init__(self, episode_ids, dataset_dir, camera_names, norm_stats, max_len=None, command_list=None, use_language=False, language_encoder=None, policy_class=None):
         super().__init__()
         self.episode_ids = episode_ids if len(episode_ids) > 0 else [0]
         self.dataset_dir = dataset_dir
@@ -31,13 +29,8 @@ class EpisodicDataset(torch.utils.data.Dataset):
         self.command_list = [cmd.strip('\'"') for cmd in command_list]
         self.use_language = use_language
         self.language_encoder = language_encoder
-        self.use_one_hot = use_one_hot
         self.policy_class = policy_class
         self.transformations = None
-        
-        if self.use_one_hot:
-            assert not self.use_language, "Both use_language and use_one_hot cannot be True at the same time."
-            assert len(self.command_list) > 0, "command_list must be provided if use_one_hot is True"
 
         self.__getitem__(0) # initialize self.is_sim
 
@@ -75,10 +68,6 @@ class EpisodicDataset(torch.utils.data.Dataset):
             segment_start, segment_end = chosen_segment['start_timestep'], chosen_segment['end_timestep']
             if self.use_language:
                 command_embedding = torch.tensor(chosen_segment['embedding']).squeeze()
-            elif self.use_one_hot:
-                command_idx = self.command_list.index(chosen_segment['command'])
-                command_embedding = torch.zeros(len(self.command_list))
-                command_embedding[command_idx] = 1
 
             if segment_start is None or segment_end is None:
                 raise ValueError(f"Command segment not found for episode {episode_id}")
@@ -134,11 +123,6 @@ class EpisodicDataset(torch.utils.data.Dataset):
             for cam_name in image_dict.keys():
                 image_dict[cam_name] = cv2.cvtColor(image_dict[cam_name], cv2.COLOR_BGR2RGB)
 
-            # Apply augmentation if the flag is set
-            if AUGMENT:
-                for cam_name in image_dict.keys():
-                    image_dict[cam_name] = A.RandomBrightness(p=0.5)(image=image_dict[cam_name])['image']
-
             # Adjusting action loading
             if is_sim:
                 action = root['/action'][start_ts:end_ts+1]
@@ -157,12 +141,6 @@ class EpisodicDataset(torch.utils.data.Dataset):
             # Constructing the image data for all cameras
             all_cam_images = [image_dict[cam_name] for cam_name in self.camera_names]
             all_cam_images = np.stack(all_cam_images, axis=0)
-
-            # debugging: save images
-            # if not os.path.exists("images"):
-            #     os.makedirs("images")
-            # for i in range(all_cam_images.shape[0]):
-            #     cv2.imwrite(f"images/{i}.png", all_cam_images[i])
 
             # Constructing the observations
             image_data = torch.from_numpy(all_cam_images)
@@ -199,7 +177,7 @@ class EpisodicDataset(torch.utils.data.Dataset):
                 action_data = (action_data - self.norm_stats["action_mean"]) / self.norm_stats["action_std"]
             qpos_data = (qpos_data - self.norm_stats["qpos_mean"]) / self.norm_stats["qpos_std"]
 
-            if self.use_language or self.use_one_hot:
+            if self.use_language:
                 return image_data, qpos_data, action_data, is_pad, command_embedding
             else:
                 return image_data, qpos_data, action_data, is_pad
@@ -246,7 +224,7 @@ def get_norm_stats(dataset_dirs, num_episodes_list):
 
 
 ### Merge multiple datasets
-def load_merged_data(dataset_dirs, num_episodes_list, camera_names, batch_size_train, max_len=None, command_list=None, use_language=False, language_encoder=None, use_one_hot=False, dagger_ratio=None, policy_class=None):
+def load_merged_data(dataset_dirs, num_episodes_list, camera_names, batch_size_train, max_len=None, command_list=None, use_language=False, language_encoder=None, dagger_ratio=None, policy_class=None):
     assert len(dataset_dirs) == len(num_episodes_list), "Length of dataset_dirs and num_episodes_list must be the same."
     if dagger_ratio is not None:
         assert 0 <= dagger_ratio <= 1, "dagger_ratio must be between 0 and 1."
@@ -290,7 +268,7 @@ def load_merged_data(dataset_dirs, num_episodes_list, camera_names, batch_size_t
     norm_stats = get_norm_stats(dataset_dirs, num_episodes_list)
 
     # Construct dataset and dataloader for each dataset dir and merge them
-    train_datasets = [EpisodicDataset([idx for d, idx in all_filtered_indices if d == dataset_dir], dataset_dir, camera_names, norm_stats, max_len, command_list, use_language, language_encoder, use_one_hot, policy_class) for dataset_dir in dataset_dirs]
+    train_datasets = [EpisodicDataset([idx for d, idx in all_filtered_indices if d == dataset_dir], dataset_dir, camera_names, norm_stats, max_len, command_list, use_language, language_encoder, policy_class) for dataset_dir in dataset_dirs]
     merged_train_dataset = ConcatDataset(train_datasets)
 
     if dagger_ratio is not None:

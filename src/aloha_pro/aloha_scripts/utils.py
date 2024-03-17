@@ -7,6 +7,7 @@ from einops import rearrange
 import numpy as np
 import psutil
 import time
+import h5py_cache
 
 def break_text(text, break_points=(',', '.', ';', ':', '?', '!')): 
     """
@@ -170,7 +171,7 @@ def get_auto_index(dataset_dir, dataset_name_prefix = '', data_suffix = 'hdf5'):
             return i
     raise Exception(f"Error getting auto index, or more than {max_idx} episodes")
 
-def visualize_language_dagger(curr_image, predicted_instruction, command, save_dir, episode_idx):
+def visualize_language_correction(curr_image, predicted_instruction, command, save_dir, episode_idx):
     font = cv2.FONT_HERSHEY_SIMPLEX 
     font_scale = 1.5 
     font_thickness = 3
@@ -204,6 +205,117 @@ def create_dataset_path(dataset_dir):
     print(f'Dataset name: {dataset_name}')
     dataset_path = os.path.join(dataset_dir, dataset_name)
     return dataset_path, episode_idx
+
+
+def save_trajectory(dataset_path, timesteps, actions, camera_names, command, image_list=None):
+    # save trajectory
+    """
+    For each timestep:
+    observations
+    - images
+        - cam_high          (480, 640, 3) 'uint8'
+        - cam_low           (480, 640, 3) 'uint8'
+        - cam_left_wrist    (480, 640, 3) 'uint8'
+        - cam_right_wrist   (480, 640, 3) 'uint8'
+    - qpos                  (14,)         'float64'
+    - qvel                  (14,)         'float64'
+    - option                (1,)          'int'
+    
+    action                  (14,)         'float64'
+    """
+
+    data_dict = {
+        '/observations/qpos': [],
+        '/observations/qvel': [],
+        '/observations/effort': [],
+        '/observations/option': [],
+        '/action': [],
+    }
+    for cam_name in camera_names:
+        data_dict[f'/observations/images/{cam_name}'] = []
+
+    # len(action): max_timesteps, len(time_steps): max_timesteps + 1
+    while actions:
+        action = actions.pop(0)
+        ts = timesteps.pop(0)
+        data_dict['/observations/qpos'].append(ts.observation['qpos'])
+        data_dict['/observations/qvel'].append(ts.observation['qvel'])
+        data_dict['/observations/effort'].append(ts.observation['effort'])
+        option_expanded = np.expand_dims(np.array(ts.observation['option']), axis=0)
+        data_dict['/observations/option'].append(option_expanded)
+        data_dict['/action'].append(action)
+        for cam_name in camera_names:
+            data_dict[f'/observations/images/{cam_name}'].append(ts.observation['images'][cam_name])
+
+    COMPRESS = True
+
+    if COMPRESS:
+        # JPEG compression
+        t0 = time.time()
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90] # tried as low as 20, seems fine
+        compressed_len = []
+        for cam_name in camera_names:
+            image_list_data = data_dict[f'/observations/images/{cam_name}']
+            compressed_list = []
+            compressed_len.append([])
+            for image in image_list_data:
+                result, encoded_image = cv2.imencode('.jpg', image, encode_param) # 0.02 sec # cv2.imdecode(encoded_image, 1)
+                compressed_list.append(encoded_image)
+                compressed_len[-1].append(len(encoded_image))
+            data_dict[f'/observations/images/{cam_name}'] = compressed_list
+        # print(f'compression: {time.time() - t0:.2f}s')
+
+        # pad so it has same length
+        t0 = time.time()
+        compressed_len = np.array(compressed_len)
+        padded_size = compressed_len.max()
+        for cam_name in camera_names:
+            compressed_image_list = data_dict[f'/observations/images/{cam_name}']
+            padded_compressed_image_list = []
+            for compressed_image in compressed_image_list:
+                padded_compressed_image = np.zeros(padded_size, dtype='uint8')
+                image_len = len(compressed_image)
+                padded_compressed_image[:image_len] = compressed_image
+                padded_compressed_image_list.append(padded_compressed_image)
+            data_dict[f'/observations/images/{cam_name}'] = padded_compressed_image_list
+        # print(f'padding: {time.time() - t0:.2f}s')
+
+    # HDF5
+    t0 = time.time()
+    max_timesteps = len(data_dict['/action'])
+    with h5py_cache.File(dataset_path + '.hdf5', 'w', chunk_cache_mem_size=1024**2*2) as root:
+        root.attrs['sim'] = False
+        root.attrs['compress'] = COMPRESS
+        obs = root.create_group('observations')
+        image = obs.create_group('images')
+        for cam_name in camera_names:
+            if COMPRESS:
+                _ = image.create_dataset(cam_name, (max_timesteps, padded_size), dtype='uint8',
+                                         chunks=(1, padded_size), )
+            else:
+                _ = image.create_dataset(cam_name, (max_timesteps, 480, 640, 3), dtype='uint8',
+                                         chunks=(1, 480, 640, 3), )
+        _ = obs.create_dataset('qpos', (max_timesteps, 14))
+        _ = obs.create_dataset('qvel', (max_timesteps, 14))
+        _ = obs.create_dataset('effort', (max_timesteps, 14))
+        _ = obs.create_dataset('option', (max_timesteps, 1))
+        _ = root.create_dataset('action', (max_timesteps, 14))
+
+        for name, array in data_dict.items():
+            root[name][...] = array
+
+        if COMPRESS:
+            _ = root.create_dataset('compress_len', (len(camera_names), max_timesteps))
+            root['/compress_len'][...] = compressed_len
+    
+    # save command in a txt file
+    command_path = dataset_path + '.txt'
+    with open(command_path, 'w') as f:
+        f.write(command)
+
+    # print(f'Saving: {time.time() - t0:.1f} secs')
+    return ts, image_list
+
 
 # Automatically kill the job if it’s going to exceed the memory limit.
 def memory_monitor():

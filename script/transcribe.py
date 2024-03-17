@@ -10,9 +10,9 @@ import argparse
 from tqdm import tqdm
 import threading
 import sys
-sys.path.append('/home/lucyshi/code/language-dagger/src') # to import aloha
-sys.path.append('/iris/u/lucyshi/language-dagger/src') # for cluster
-sys.path.append('/home/huzheyuan/Desktop/language-dagger/src') # for zheyuan
+sys.path.append('/home/lucyshi/code/yay_robot/src') # to import aloha
+sys.path.append('/iris/u/lucyshi/yay_robot/src') # for cluster
+sys.path.append('/home/huzheyuan/Desktop/yay_robot/src') # for zheyuan
 from aloha_pro.aloha_scripts.utils import memory_monitor
 
 

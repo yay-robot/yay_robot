@@ -40,7 +40,6 @@ class Instructor(nn.Module):
 
         # Learnable temperature
         self.temperature = nn.Parameter(torch.ones(1))
-        # self.temperature = torch.ones(1).to(device)
 
         # Positional Encoding
         self.positional_encoding = self.create_sinusoidal_embeddings(self.clip_model.visual.output_dim, (history_len + 1) * num_cameras)
@@ -97,82 +96,6 @@ class Instructor(nn.Module):
 
         return logits, self.temperature
 
-########## ResNet version ##########
-    # def __init__(self, device, history_len, output_size=768, hidden_size=512, num_heads=8, num_layers=6, candidate_embeddings=None, candidate_texts=None, command_to_index=None, num_cameras=4, num_kp=32, feature_dimension=64):
-    #     super().__init__()
-
-        # from robomimic.models.base_nets import ResNet18Conv, SpatialSoftmax
-        # from robomimic.algo.diffusion_policy import replace_bn_with_gn  
-
-    #     # Initialize ResNet18 backbones for each camera
-    #     self.backbones = nn.ModuleList([
-    #         replace_bn_with_gn(ResNet18Conv(input_channel=3, pretrained=False, input_coord_conv=False))
-    #         for _ in range(num_cameras)
-    #     ])
-
-    #     # Spatial softmax and linear layers
-    #     self.pools = nn.ModuleList([SpatialSoftmax(input_shape=[512, 15, 20], num_kp=num_kp, temperature=1.0, learnable_temperature=False, noise_std=0.0) for _ in range(num_cameras)])
-    #     self.linears = nn.ModuleList([nn.Linear(int(np.prod([num_kp, 2])), feature_dimension) for _ in range(num_cameras)])
-
-    #     # Transformer and other components
-    #     self.transformer = nn.TransformerEncoder(nn.TransformerEncoderLayer(d_model=feature_dimension, nhead=num_heads, dim_feedforward=hidden_size), num_layers=num_layers)
-    #     self.mlp = nn.Sequential(nn.Linear(feature_dimension, hidden_size), nn.ReLU(), nn.Linear(hidden_size, output_size))
-    #     self.temperature = nn.Parameter(torch.ones(1))
-    #     self.positional_encoding = self.create_sinusoidal_embeddings(feature_dimension, (history_len + 1) * num_cameras)
-
-    #     # Additional properties
-    #     self.history_len = history_len
-    #     self.candidate_embeddings = candidate_embeddings
-    #     self.candidate_texts = candidate_texts
-    #     self.command_to_index = command_to_index
-        
-    #     total, trainable = count_parameters(self)
-    #     print(f"Total parameters: {total / 1e6:.2f}M")
-    #     print(f"Trainable parameters: {trainable / 1e6:.2f}M")
-    
-    # def forward(self, images):
-    #     # Given images of shape (b, t, k, c, h, w)
-    #     batch_size, timesteps, num_cameras, c, h, w = images.shape
-        
-    #     # Check if padding is required
-    #     if timesteps < self.history_len + 1:
-    #         padding_needed = self.history_len + 1 - timesteps
-    #         padding = torch.zeros((batch_size, padding_needed, num_cameras, c, h, w), device=images.device)
-    #         images = torch.cat([padding, images], dim=1)
-    #         timesteps = self.history_len + 1  # Update timesteps to reflect the new length
-        
-    #     timestep_camera_features = []
-
-    #     for t in range(timesteps):
-    #         for i in range(num_cameras):
-    #             # Extract and process images for each time step and camera
-    #             camera_images = images[:, t, i, :, :, :].reshape(batch_size, c, h, w)
-    #             camera_images = normalize(camera_images)
-
-    #             cam_features = self.backbones[i](camera_images)
-    #             pool_features = self.pools[i](cam_features)
-    #             pool_features = torch.flatten(pool_features, start_dim=1)
-    #             out_features = self.linears[i](pool_features)
-
-    #             # Append the features maintaining the order: ts_0_cam_0, ts_0_cam_1, ..., ts_1_cam_0, ...
-    #             timestep_camera_features.append(out_features)
-
-    #     # Concatenate all features along the new dimension representing the combined timestep and camera order
-    #     image_features = torch.stack(timestep_camera_features, dim=1)  # Shape: [batch_size, timesteps * num_cameras, feature_dim]
-
-    #     # Add positional encoding
-    #     pos_encoding = self.positional_encoding[:timesteps * num_cameras, :].unsqueeze(0).repeat(batch_size, 1, 1)
-    #     image_features += pos_encoding.to(image_features.device)
-        
-    #     # Transformer Processing
-    #     transformer_out = self.transformer(image_features.transpose(0, 1)).transpose(0, 1)  # Ensure time dimension is second
-    #     final_output = transformer_out[:, -1, :]  # Extract the last time step
-    #     command_pred = self.mlp(final_output)
-    #     similarity_logits = self.compute_similarities(command_pred) / self.temperature.clamp(min=1e-8)
-
-    #     return similarity_logits, self.temperature
-
-######################    
     def compute_similarities(self, embeddings):
         # Compute the cosine similarities
         cosine_similarities = (embeddings @ self.candidate_embeddings.T) / (
@@ -195,12 +118,6 @@ class Instructor(nn.Module):
 
         # Find the indices of the max logit for each example in the batch
         _, max_indices = torch.max(probs, dim=-1) 
-
-        # probs = torch.nn.functional.softmax(logits, dim=-1)
-        # top_probs, top_indices = torch.topk(probs[0], 5)
-        # normalized_top_probs = top_probs / top_probs.sum()
-        # for i, (index, prob) in enumerate(zip(top_indices, normalized_top_probs)):
-        #     print(f"Candidate {i}: {self.candidate_texts[index]}, Normalized Prob: {prob:.4f}")
         
         return [self.candidate_texts[index] for index in max_indices.cpu().numpy()]
 
@@ -210,13 +127,6 @@ class Instructor(nn.Module):
         
         # Get the index of the maximum similarity for each prediction
         indices = similarities.argmax(dim=-1)
-
-        # Print the top 5 candidates
-        # probs = torch.nn.functional.softmax(similarities, dim=-1)
-        # top_probs, top_indices = torch.topk(probs[0], 5)
-        # normalized_top_probs = top_probs / top_probs.sum()
-        # for index, prob in zip(top_indices, normalized_top_probs):
-        #     print(f"Candidate: {self.candidate_texts[index]}, Normalized Prob: {prob:.4f}")
         
         # Map the indices back to the actual texts
         return [self.candidate_texts[i] for i in indices.cpu().numpy()]

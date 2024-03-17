@@ -1,7 +1,7 @@
 import pathlib
 
 ### Task parameters
-DATA_DIR = '/iris/u/lucyshi/language-dagger/data/act'
+DATA_DIR = '/iris/u/lucyshi/yay_robot/data/act'
 SIM_TASK_CONFIGS = {
     'sim_transfer_cube_scripted':{
         'dataset_dir': DATA_DIR + '/sim_transfer_cube_scripted',

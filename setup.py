@@ -4,7 +4,7 @@ import pkg_resources
 from setuptools import setup, find_packages
 
 
-PKG_NAME = "language_dagger"
+PKG_NAME = "yay_robot"
 VERSION = "0.1"
 EXTRAS = {}
 

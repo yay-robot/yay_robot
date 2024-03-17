@@ -1,7 +1,7 @@
 ### Task parameters
 DATA_DIR = '/scr/lucyshi/dataset'
 # DATA_DIR = '/data2/data_collection'
-# DATA_DIR = '/iris/u/lucyshi/language-dagger/data/act' # for cluster
+# DATA_DIR = '/iris/u/lucyshi/yay_robot/data/act' # for cluster
 TASK_CONFIGS = {
     'aloha_test':{
         'dataset_dir': DATA_DIR + '/aloha_test',
@@ -15,124 +15,76 @@ TASK_CONFIGS = {
         'episode_len': 2000,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_pro_pencil':{
-        'dataset_dir': DATA_DIR + '/aloha_pro_pencil_compressed',
-        'num_episodes': 25,
-        'episode_len': 350,
-        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
-    },
-    'aloha_reach_sharpie_sponge':{
-        'dataset_dir': DATA_DIR + '/aloha_reach_sharpie_sponge',
-        'num_episodes': 30,
-        'episode_len': 200,
-        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
-    },
-    'aloha_simplified_pick_sharpie_sponge':{
-        'dataset_dir': DATA_DIR + '/aloha_simplified_pick_sharpie_sponge',
-        'num_episodes': 40,
-        'episode_len': 300,
-        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
-    },
-    'aloha_random_pick_sharpie_sponge':{
-        'dataset_dir': DATA_DIR + '/aloha_random_pick_sharpie_sponge',
-        'num_episodes': 50,
-        'episode_len': 300,
-        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
-    },
-    'aloha_bag_3_objects_dagger': {
-        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_dagger',
-        'num_episodes': 75,
-        'episode_len': 200,
-        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
-    },
-    'aloha_bag_3_objects_ethan': {
-        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_ethan',
+    'aloha_bag_3_objects_d1': {
+        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_d1',
         'num_episodes': 100,
         'episode_len': 2500,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_bag_3_objects_ethan_v0': {
-        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_ethan_v0',
+    'aloha_bag_3_objects_d1_v0': {
+        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_d1_v0',
         'num_episodes': 16,
         'episode_len': 2400,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_bag_3_objects_ethan_v1': {
-        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_ethan_v1',
+    'aloha_bag_3_objects_d1_v1': {
+        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_d1_v1',
         'num_episodes': 48,
         'episode_len': 2200,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_bag_3_objects_ethan_v2': {
-        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_ethan_v2',
+    'aloha_bag_3_objects_d1_v2': {
+        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_d1_v2',
         'num_episodes': 278,
         'episode_len': 2800,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_bag_3_objects_ethan_v3': {
-        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_ethan_v3',
+    'aloha_bag_3_objects_d1_v3': {
+        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_d1_v3',
         'num_episodes': 34,
         'episode_len': 3800,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_tony_test': {
-        'dataset_dir': DATA_DIR + '/aloha_tony_test',
-        'num_episodes': 1,
-        'episode_len': 10,
-        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
-    },
-    'aloha_bag_3_objects_johnny_v0': {
-        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_johnny_v0',
+    'aloha_bag_3_objects_d2_v0': {
+        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_d2_v0',
         'num_episodes': 50,
         'episode_len': 3000,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_bag_3_objects_johnny_v1': {
-        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_johnny_v1',
+    'aloha_bag_3_objects_d2_v1': {
+        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_d2_v1',
         'num_episodes': 478,
         'episode_len': 8000,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_bag_3_objects_johnny_v1_language_dagger': {
-        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_johnny_v1_language_dagger',
+    'aloha_bag_3_objects_d2_v1_language_correction': {
+        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_d2_v1_language_correction',
         'num_episodes': 586, 
         'episode_len': 350,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_bag_3_objects_johnny_v1_language_dagger_v1': {
-        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_johnny_v1_language_dagger_v1',
+    'aloha_bag_3_objects_d2_v1_language_correction_v1': {
+        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_d2_v1_language_correction_v1',
         'num_episodes': 55, 
         'episode_len': 350,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_bag_3_objects_johnny_v1_language_dagger_v2': {
-        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_johnny_v1_language_dagger_v2',
+    'aloha_bag_3_objects_d2_v1_language_correction_v2': {
+        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_d2_v1_language_correction_v2',
         'num_episodes': 69, 
         'episode_len': 350,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_bag_3_objects_johnny_v1_language_dagger_v3': {
-        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_johnny_v1_language_dagger_v3',
+    'aloha_bag_3_objects_d2_v1_language_correction_v3': {
+        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_d2_v1_language_correction_v3',
         'num_episodes': 352, 
         'episode_len': 350,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_bag_3_objects_johnny_v1_sponge': {
-        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_johnny_v1_sponge',
+    'aloha_bag_3_objects_d2_v1_sponge': {
+        'dataset_dir': DATA_DIR + '/aloha_bag_3_objects_d2_v1_sponge',
         'num_episodes': 151,
         'episode_len': 2500,
-        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
-    },
-    'aloha_screwdriver': {
-        'dataset_dir': DATA_DIR + '/aloha_screwdriver',
-        'num_episodes': 30, 
-        'episode_len': 400,
-        'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
-    },
-    'aloha_tshirt': {
-        'dataset_dir': DATA_DIR + '/aloha_tshirt',
-        'num_episodes': 30, 
-        'episode_len': 1300,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
     'aloha_plate_sponge': {
@@ -147,8 +99,8 @@ TASK_CONFIGS = {
         'episode_len': 1200,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_plate_sponge_dagger': {
-        'dataset_dir': DATA_DIR + '/aloha_plate_sponge_language_dagger',
+    'aloha_plate_sponge_correction': {
+        'dataset_dir': DATA_DIR + '/aloha_plate_sponge_language_correction',
         'num_episodes': 94,
         'episode_len': 249,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
@@ -159,38 +111,38 @@ TASK_CONFIGS = {
         'episode_len': 6000,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_trail_mix_language_dagger_v0': {
-        'dataset_dir': DATA_DIR + '/aloha_trail_mix_language_dagger_v0',
+    'aloha_trail_mix_language_correction_v0': {
+        'dataset_dir': DATA_DIR + '/aloha_trail_mix_language_correction_v0',
         'num_episodes': 31, 
         'episode_len': 250,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_trail_mix_language_dagger_v1': {
-        'dataset_dir': DATA_DIR + '/aloha_trail_mix_language_dagger_v1',
+    'aloha_trail_mix_language_correction_v1': {
+        'dataset_dir': DATA_DIR + '/aloha_trail_mix_language_correction_v1',
         'num_episodes': 60, 
         'episode_len': 250,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_trail_mix_language_dagger_v2': {
-        'dataset_dir': DATA_DIR + '/aloha_trail_mix_language_dagger_v2',
+    'aloha_trail_mix_language_correction_v2': {
+        'dataset_dir': DATA_DIR + '/aloha_trail_mix_language_correction_v2',
         'num_episodes': 56, 
         'episode_len': 250,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_trail_mix_language_dagger_v3': {
-        'dataset_dir': DATA_DIR + '/aloha_trail_mix_language_dagger_v3',
+    'aloha_trail_mix_language_correction_v3': {
+        'dataset_dir': DATA_DIR + '/aloha_trail_mix_language_correction_v3',
         'num_episodes': 73, 
         'episode_len': 250,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_trail_mix_ethan_v0': {
-        'dataset_dir': DATA_DIR + '/aloha_trail_mix_ethan_v0',
+    'aloha_trail_mix_d1_v0': {
+        'dataset_dir': DATA_DIR + '/aloha_trail_mix_d1_v0',
         'num_episodes': 75,
         'episode_len': 4000,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
     },
-    'aloha_trail_mix_johnny_v1': {
-        'dataset_dir': DATA_DIR + '/aloha_trail_mix_johnny_v1',
+    'aloha_trail_mix_d2_v1': {
+        'dataset_dir': DATA_DIR + '/aloha_trail_mix_d2_v1',
         'num_episodes': 81,
         'episode_len': 5000,
         'camera_names': ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']

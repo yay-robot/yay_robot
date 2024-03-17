@@ -7,8 +7,8 @@ import dm_env
 from constants import DT, START_ARM_POSE, MASTER_GRIPPER_JOINT_NORMALIZE_FN, PUPPET_GRIPPER_JOINT_UNNORMALIZE_FN
 from constants import PUPPET_GRIPPER_POSITION_NORMALIZE_FN, PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN
 from constants import PUPPET_GRIPPER_JOINT_OPEN, PUPPET_GRIPPER_JOINT_CLOSE
-import sys; sys.path.append('/home/lucyshi/code/language-dagger/src/aloha_pro/aloha_scripts/') 
-sys.path.append('/home/huzheyuan/Desktop/language-dagger/src/aloha_pro/aloha_scripts/')
+import sys; sys.path.append('/home/lucyshi/code/yay_robot/src/aloha_pro/aloha_scripts/') 
+sys.path.append('/home/huzheyuan/Desktop/yay_robot/src/aloha_pro/aloha_scripts/')
 from robot_utils import Recorder, ImageRecorder
 from robot_utils import setup_master_bot, setup_puppet_bot, move_arms, move_grippers
 from interbotix_xs_modules.arm import InterbotixManipulatorXS

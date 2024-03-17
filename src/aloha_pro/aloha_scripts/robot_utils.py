@@ -2,7 +2,10 @@ import numpy as np
 import time
 from constants import DT
 from interbotix_xs_msgs.msg import JointSingleCommand
-from aloha.msg import RGBGrayscaleImage
+from aloha_pro.msg import RGBGrayscaleImage
+from aloha_pro.aloha_scripts.robot_utils import move_arms, torque_on, torque_off, get_arm_joint_positions, get_arm_gripper_positions, move_grippers
+from aloha_pro.aloha_scripts.real_env import get_action
+from aloha_pro.aloha_scripts.utils import create_dataset_path, save_trajectory
 
 import IPython
 e = IPython.embed
@@ -197,3 +200,52 @@ def torque_off(bot):
 def torque_on(bot):
     bot.dxl.robot_torque_enable("group", "arm", True)
     bot.dxl.robot_torque_enable("single", "gripper", True)
+
+# for DAgger
+def sync_puppet_to_master(master_bot_left, master_bot_right, puppet_bot_left, puppet_bot_right):
+    print("\nSyncing!")
+
+    # activate master arms
+    torque_on(master_bot_left)
+    torque_on(master_bot_right)
+
+    # get puppet arm positions
+    puppet_left_qpos = get_arm_joint_positions(puppet_bot_left)
+    puppet_right_qpos = get_arm_joint_positions(puppet_bot_right)
+
+    # get puppet gripper positions
+    puppet_left_gripper = get_arm_gripper_positions(puppet_bot_left)
+    puppet_right_gripper = get_arm_gripper_positions(puppet_bot_right)
+
+    # move master arms to puppet positions
+    move_arms([master_bot_left, master_bot_right], [puppet_left_qpos, puppet_right_qpos], move_time=1)
+
+    # move master grippers to puppet positions
+    move_grippers([master_bot_left, master_bot_right], [puppet_left_gripper, puppet_right_gripper], move_time=1)
+
+def teleop(env, master_bot_left, master_bot_right, dataset_dir=None, ts=None, camera_names=None, image_list=None, command=None):
+    torque_off(master_bot_left)
+    torque_off(master_bot_right)
+    print(f'\nTeleop started')
+
+    # teleop loop
+    global option
+    dataset_path, episode_idx = create_dataset_path(dataset_dir)
+    ts.observation['option'] = -1 # indicate the start
+    timesteps = [ts]
+    actions = []
+
+    while True:
+        action = get_action(master_bot_left, master_bot_right)
+        ts = env.step(action)
+        ts.observation['option'] = option
+        timesteps.append(ts)
+        actions.append(action)
+        image_list.append(ts.observation['images'])
+
+        # stop if the 3rd pedal is released
+        if option == 0:
+            print("\nReleased Pedal 3")
+            break
+
+    return save_trajectory(dataset_path, timesteps, actions, camera_names, command, image_list)

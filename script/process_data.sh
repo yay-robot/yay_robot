@@ -1,13 +1,7 @@
 #!/bin/bash
 
-# DESTINATION="iris-ws-18:/iris/u/lucyshi/language-dagger/data/act"
 DESTINATION="iris5:/scr/lucyshi/dataset"
-
-# DATASETS=("aloha_bag_3_objects_johnny_v1" "aloha_bag_3_objects_ethan_v0" "aloha_bag_3_objects_ethan_v1" "aloha_bag_3_objects_ethan_v2" "aloha_bag_3_objects")
-# DATASETS=("aloha_bag_3_objects_johnny_v1_sponge")
-DATASETS=("aloha_trail_mix_ethan_v0" "aloha_trail_mix_johnny_v1")
-# DATASETS=("aloha_bag_3_objects_ethan_v3")
-# DATASETS=("aloha_bag_3_objects_johnny_v1_language_dagger_v3")
+DATASETS=("aloha_bag_3_objects_d2_v1" "aloha_bag_3_objects_d1_v0" "aloha_bag_3_objects_d1_v1" "aloha_bag_3_objects_d1_v2" "aloha_bag_3_objects")
 
 # Encoding instructions
 for DATASET in "${DATASETS[@]}"; do

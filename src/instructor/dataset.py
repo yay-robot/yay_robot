@@ -2,12 +2,12 @@ import numpy as np
 import torch
 import os
 import h5py
-from torch.utils.data import DataLoader, ConcatDataset
 import cv2
 import json
 import sys
-sys.path.append('/home/lucyshi/code/language-dagger/src') # to import aloha
-sys.path.append('/iris/u/lucyshi/language-dagger/src') # for cluster
+sys.path.append('/home/lucyshi/code/yay_robot/src') # to import aloha
+sys.path.append('/iris/u/lucyshi/yay_robot/src') # for cluster
+from torch.utils.data import DataLoader, ConcatDataset
 
 from aloha_pro.aloha_scripts.utils import crop_resize, random_crop
 from act.utils import DAggerSampler
@@ -46,7 +46,6 @@ class SequenceDataset(torch.utils.data.Dataset):
             # Sample a random curr_ts and compute the start_ts and target_ts
             total_timesteps = root['/action'].shape[0]
             prediction_offset = self.prediction_offset
-            # prediction_offset = np.random.randint(1, 20)
             try:
                 curr_ts = np.random.randint(self.history_len * self.history_skip_frame, total_timesteps - prediction_offset)
                 start_ts = curr_ts - self.history_len * self.history_skip_frame

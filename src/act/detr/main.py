@@ -68,13 +68,12 @@ def get_args_parser():
     parser.add_argument('--use_language', action='store_true')
     parser.add_argument('--language_encoder', action='store', type=str, choices=['distilbert', 'clip'], default='distilbert', help='Type of language encoder to use: distilbert or clip', required=False)
     parser.add_argument('--max_skill_len', action='store', type=int, help='max_skill_len', required=False)
-    parser.add_argument('--use_one_hot', action='store_true')
     parser.add_argument("--image_encoder", type=str, default='resnet18', choices=['resnet18', 'resnet34', 'resnet50', 'efficientnet_b0', 'efficientnet_b3', 'resnet18film', 'resnet34film', 'resnet50film','efficientnet_b0film', 'efficientnet_b3film', 'efficientnet_b5film'], help="Which image encoder to use for the BC policy.")
     parser.add_argument('--multi_gpu', action='store_true')
     parser.add_argument('--instructor_path', action='store', type=str, help='instructor_path', required=False)
     parser.add_argument('--history_len', action='store', type=int, help='history_len', default=2)
     parser.add_argument('--history_skip_frame', action='store', type=int, help='history_skip_frame', default=50)
-    parser.add_argument('--hl_margin', action='store', type=int, help='the number of timesteps to record before and after language dagger', default=50)
+    parser.add_argument('--hl_margin', action='store', type=int, help='the number of timesteps to record before and after language correction', default=50)
 
     return parser
 

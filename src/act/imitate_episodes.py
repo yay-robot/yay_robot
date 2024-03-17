@@ -1,56 +1,39 @@
+import sys
+sys.path.append('/home/lucyshi/code/yay_robot/src') # to import aloha
+sys.path.append('/iris/u/lucyshi/yay_robot/src') # for cluster
+sys.path.append('/home/huzheyuan/Desktop/yay_robot/src') # to import aloha
 import torch
 import numpy as np
 import os
 import pickle
 import argparse
+import wandb
+import cv2
+import math
+import threading
+import time
+import signal
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from einops import rearrange
-import wandb
-import cv2
-from torch.optim.lr_scheduler import LambdaLR
-import math
 from torchvision import transforms
 from collections import deque
-import threading
 from queue import Queue
-import sys
-sys.path.append('/home/lucyshi/code/language-dagger/src') # to import aloha
-sys.path.append('/iris/u/lucyshi/language-dagger/src') # for cluster
-sys.path.append('/home/huzheyuan/Desktop/language-dagger/src') # to import aloha
+from torch.optim.lr_scheduler import LambdaLR
 
 from constants import DT, PUPPET_GRIPPER_JOINT_OPEN
+from sim_env import BOX_POSE
 from utils import load_merged_data # data functions
 from utils import sample_box_pose, sample_insertion_pose # robot functions
 from utils import compute_dict_mean, set_seed, detach_dict # helper functions
 from policy import ACTPolicy, CNNMLPPolicy, DiffusionPolicy
 from visualize_episodes import save_videos
-from aloha_pro.aloha_scripts.utils import initialize_model_and_tokenizer, encode_text, crop_resize, center_crop, is_multi_gpu_checkpoint, modify_transcription, modify_real_time
+from aloha_pro.aloha_scripts.utils import initialize_model_and_tokenizer, encode_text, crop_resize, is_multi_gpu_checkpoint, modify_real_time, visualize_language_correction, create_dataset_path, memory_monitor, save_trajectory
 from instructor.train import build_instructor
-### dagger ###
-CLUSTER = False
-if not CLUSTER:
-    from pynput import keyboard
-    import time
-    import h5py_cache
-    import signal
-    from interbotix_xs_modules.arm import InterbotixManipulatorXS
-    from aloha_pro.aloha_scripts.robot_utils import move_arms, torque_on, torque_off, get_arm_joint_positions, get_arm_gripper_positions, move_grippers
-    from aloha_pro.aloha_scripts.real_env import get_action
-    from aloha_pro.aloha_scripts.utils import visualize_language_dagger, create_dataset_path, memory_monitor
-    import rospy
-    from std_msgs.msg import String
 
-from sim_env import BOX_POSE
-
-import IPython
-e = IPython.embed
-
-CROP_TOP = True # hardcode
-ONLY_RIGHT = False
-CKPT = 29100 # 0 for policy_last
+CROP_TOP = True # for aloha pro, whose top camera is high
+CKPT = 0 # 0 for policy_last, otherwise put the ckpt number here
 AUDIO = False
-DAGGER = False
 option = 0
 intervention_needed = threading.Event() # flag to signal an intervention
 recorded_commands = Queue()
@@ -70,163 +53,6 @@ def on_release(key):
     global option
     if hasattr(key, 'char') and key.char in ['1', '2', '3', '4', '5']:
         option = 0
-
-def sync_puppet_to_master(master_bot_left, master_bot_right, puppet_bot_left, puppet_bot_right):
-    print("\nSyncing!")
-
-    # activate master arms
-    torque_on(master_bot_left)
-    torque_on(master_bot_right)
-
-    # get puppet arm positions
-    puppet_left_qpos = get_arm_joint_positions(puppet_bot_left)
-    puppet_right_qpos = get_arm_joint_positions(puppet_bot_right)
-
-    # get puppet gripper positions
-    puppet_left_gripper = get_arm_gripper_positions(puppet_bot_left)
-    puppet_right_gripper = get_arm_gripper_positions(puppet_bot_right)
-
-    # move master arms to puppet positions
-    move_arms([master_bot_left, master_bot_right], [puppet_left_qpos, puppet_right_qpos], move_time=1)
-
-    # move master grippers to puppet positions
-    move_grippers([master_bot_left, master_bot_right], [puppet_left_gripper, puppet_right_gripper], move_time=1)
-
-def teleop(env, master_bot_left, master_bot_right, dataset_dir=None, ts=None, camera_names=None, image_list=None, command=None):
-    torque_off(master_bot_left)
-    torque_off(master_bot_right)
-    print(f'\nTeleop started')
-
-    # teleop loop
-    global option
-    dataset_path, episode_idx = create_dataset_path(dataset_dir)
-    ts.observation['option'] = -1 # indicate the start
-    timesteps = [ts]
-    actions = []
-
-    while True:
-        action = get_action(master_bot_left, master_bot_right)
-        ts = env.step(action)
-        ts.observation['option'] = option
-        timesteps.append(ts)
-        actions.append(action)
-        image_list.append(ts.observation['images'])
-
-        # stop if the 3rd pedal is released
-        if option == 0:
-            print("\nReleased Pedal 3")
-            break
-
-    return save_trajectory(dataset_path, timesteps, actions, camera_names, command, image_list)
-
-def save_trajectory(dataset_path, timesteps, actions, camera_names, command, image_list=None):
-    # save trajectory
-    """
-    For each timestep:
-    observations
-    - images
-        - cam_high          (480, 640, 3) 'uint8'
-        - cam_low           (480, 640, 3) 'uint8'
-        - cam_left_wrist    (480, 640, 3) 'uint8'
-        - cam_right_wrist   (480, 640, 3) 'uint8'
-    - qpos                  (14,)         'float64'
-    - qvel                  (14,)         'float64'
-    - option                (1,)          'int'
-    
-    action                  (14,)         'float64'
-    """
-
-    data_dict = {
-        '/observations/qpos': [],
-        '/observations/qvel': [],
-        '/observations/effort': [],
-        '/observations/option': [],
-        '/action': [],
-    }
-    for cam_name in camera_names:
-        data_dict[f'/observations/images/{cam_name}'] = []
-
-    # len(action): max_timesteps, len(time_steps): max_timesteps + 1
-    while actions:
-        action = actions.pop(0)
-        ts = timesteps.pop(0)
-        data_dict['/observations/qpos'].append(ts.observation['qpos'])
-        data_dict['/observations/qvel'].append(ts.observation['qvel'])
-        data_dict['/observations/effort'].append(ts.observation['effort'])
-        option_expanded = np.expand_dims(np.array(ts.observation['option']), axis=0)
-        data_dict['/observations/option'].append(option_expanded)
-        data_dict['/action'].append(action)
-        for cam_name in camera_names:
-            data_dict[f'/observations/images/{cam_name}'].append(ts.observation['images'][cam_name])
-
-    COMPRESS = True
-
-    if COMPRESS:
-        # JPEG compression
-        t0 = time.time()
-        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90] # tried as low as 20, seems fine
-        compressed_len = []
-        for cam_name in camera_names:
-            image_list_data = data_dict[f'/observations/images/{cam_name}']
-            compressed_list = []
-            compressed_len.append([])
-            for image in image_list_data:
-                result, encoded_image = cv2.imencode('.jpg', image, encode_param) # 0.02 sec # cv2.imdecode(encoded_image, 1)
-                compressed_list.append(encoded_image)
-                compressed_len[-1].append(len(encoded_image))
-            data_dict[f'/observations/images/{cam_name}'] = compressed_list
-        # print(f'compression: {time.time() - t0:.2f}s')
-
-        # pad so it has same length
-        t0 = time.time()
-        compressed_len = np.array(compressed_len)
-        padded_size = compressed_len.max()
-        for cam_name in camera_names:
-            compressed_image_list = data_dict[f'/observations/images/{cam_name}']
-            padded_compressed_image_list = []
-            for compressed_image in compressed_image_list:
-                padded_compressed_image = np.zeros(padded_size, dtype='uint8')
-                image_len = len(compressed_image)
-                padded_compressed_image[:image_len] = compressed_image
-                padded_compressed_image_list.append(padded_compressed_image)
-            data_dict[f'/observations/images/{cam_name}'] = padded_compressed_image_list
-        # print(f'padding: {time.time() - t0:.2f}s')
-
-    # HDF5
-    t0 = time.time()
-    max_timesteps = len(data_dict['/action'])
-    with h5py_cache.File(dataset_path + '.hdf5', 'w', chunk_cache_mem_size=1024**2*2) as root:
-        root.attrs['sim'] = False
-        root.attrs['compress'] = COMPRESS
-        obs = root.create_group('observations')
-        image = obs.create_group('images')
-        for cam_name in camera_names:
-            if COMPRESS:
-                _ = image.create_dataset(cam_name, (max_timesteps, padded_size), dtype='uint8',
-                                         chunks=(1, padded_size), )
-            else:
-                _ = image.create_dataset(cam_name, (max_timesteps, 480, 640, 3), dtype='uint8',
-                                         chunks=(1, 480, 640, 3), )
-        _ = obs.create_dataset('qpos', (max_timesteps, 14))
-        _ = obs.create_dataset('qvel', (max_timesteps, 14))
-        _ = obs.create_dataset('effort', (max_timesteps, 14))
-        _ = obs.create_dataset('option', (max_timesteps, 1))
-        _ = root.create_dataset('action', (max_timesteps, 14))
-
-        for name, array in data_dict.items():
-            root[name][...] = array
-
-        if COMPRESS:
-            _ = root.create_dataset('compress_len', (len(camera_names), max_timesteps))
-            root['/compress_len'][...] = compressed_len
-    
-    # save command in a txt file
-    command_path = dataset_path + '.txt'
-    with open(command_path, 'w') as f:
-        f.write(command)
-
-    # print(f'Saving: {time.time() - t0:.1f} secs')
-    return ts, image_list
 
 def predict_instruction(instructor, history_obs, history_skip_frame, query_frequency):
     # Ensuring that instructor_input has the last few observations with length history_len + 1
@@ -281,39 +107,27 @@ def get_user_command():
 
     else:
         command = input("Please provide a command: ")   
-        # Removing leading numbers from the string
+    # Removing leading numbers from the string
     command = ''.join(filter(lambda x: not x.isdigit(), command))    
     command = modify_real_time(command)
     return command
 
-def generate_command_embedding(command, t, language_encoder, tokenizer, model, use_one_hot=False, instructor=None):
+def generate_command_embedding(command, t, language_encoder, tokenizer, model, instructor=None):
     print(f"Command at {t=}: {command}")
     
-    if use_one_hot: # TODO: map from command_list, currently limited to 2 commands
-        # Assuming command can be either '0' or '1'.
-        if command == '0':
-            command_embedding = torch.tensor([1, 0], dtype=torch.float32)
-        elif command == '1':
-            command_embedding = torch.tensor([0, 1], dtype=torch.float32)
-        else:
-            raise ValueError("Invalid command input for one-hot encoding.")  
-        command_embedding = command_embedding.cuda().unsqueeze(0)
-    else:
-        command_embedding = encode_text(command, language_encoder, tokenizer, model)
-        command_embedding = torch.tensor(command_embedding).cuda()
-        if instructor is not None:
-            command_embedding = instructor.get_nearest_embedding(command_embedding)[0]
+    command_embedding = encode_text(command, language_encoder, tokenizer, model)
+    command_embedding = torch.tensor(command_embedding).cuda()
+    if instructor is not None:
+        command_embedding = instructor.get_nearest_embedding(command_embedding)[0]
     return command_embedding
 
 def main(args):
     set_seed(1)
 
-    if not CLUSTER:
-        signal.signal(signal.SIGINT, signal_handler)
-        # Start the memory monitor thread
-        threading.Thread(target=memory_monitor, daemon=True).start()
+    signal.signal(signal.SIGINT, signal_handler)
+    threading.Thread(target=memory_monitor, daemon=True).start() # Start the memory monitor thread
 
-    # command line parameters
+    # Command line parameters
     is_eval = args['eval']
     ckpt_dir = args['ckpt_dir']
     policy_class = args['policy_class']
@@ -326,14 +140,13 @@ def main(args):
     commands = args['command'].split(',') if args['command'] else []
     use_language = args['use_language']
     language_encoder = args['language_encoder']
-    use_one_hot = args['use_one_hot']
     multi_gpu = args['multi_gpu']
     instructor_path = args['instructor_path']
     history_len = args['history_len']
     history_skip_frame = args['history_skip_frame']
     hl_margin = args['hl_margin']
 
-     # set up wandb
+     # Set up wandb
     if log_wandb:
         if is_eval:
             # run_name += ".eval"
@@ -341,15 +154,13 @@ def main(args):
         else:
             run_name = ckpt_dir.split("/")[-1] + f".{args['seed']}"
             wandb_run_id_path = os.path.join(ckpt_dir, 'wandb_run_id.txt')
-            # check if it exists
+            # check if wandb run exists
             if os.path.exists(wandb_run_id_path):
                 with open(wandb_run_id_path, 'r') as f:
                     saved_run_id = f.read().strip()
-                wandb.init(project="language-dagger", entity="lucys", name=run_name, resume=saved_run_id)
-                # wandb.init(project="language-dagger", entity="dmc_hand", name=run_name, resume=saved_run_id)
+                wandb.init(project="yay-robot", entity="lucys", name=run_name, resume=saved_run_id)
             else:
-                wandb.init(project="language-dagger", entity="lucys", name=run_name, config=args, resume='allow')
-                # wandb.init(project="language-dagger", entity="dmc_hand", name=run_name, config=args, resume='allow')  
+                wandb.init(project="yay-robot", entity="lucys", name=run_name, config=args, resume='allow') 
                 # Ensure the directory exists before trying to open the file
                 os.makedirs(os.path.dirname(wandb_run_id_path), exist_ok=True)
                 with open(wandb_run_id_path, 'w') as f:
@@ -417,7 +228,7 @@ def main(args):
                          'is_eval': is_eval,
                          }
     elif policy_class == 'CNNMLP':
-        policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone' : args.image_encoder, 'num_queries': 1,
+        policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone' : args['image_encoder'], 'num_queries': 1,
                          'camera_names': camera_names,}
     else:
         raise NotImplementedError
@@ -440,7 +251,6 @@ def main(args):
         'use_language': use_language,
         'language_encoder': language_encoder,
         'max_skill_len': max_skill_len,
-        'use_one_hot': use_one_hot,
         'instructor_path': instructor_path,
         'history_len': history_len,
         'history_skip_frame': history_skip_frame,
@@ -462,7 +272,7 @@ def main(args):
 
     train_dataloader, stats, _ = load_merged_data(dataset_dirs, num_episodes_list, camera_names, batch_size_train, max_len=max_skill_len, 
                                                   command_list=commands, use_language=use_language, language_encoder=language_encoder, 
-                                                  use_one_hot=use_one_hot, policy_class=policy_class) # , dagger_ratio=0.4
+                                                  policy_class=policy_class) 
     
     # save dataset stats
     if not os.path.isdir(ckpt_dir):
@@ -557,14 +367,17 @@ def get_image(ts, camera_names, crop_top=True, save_dir=None, t=None):
     return curr_image
 
 def eval_bc(config, ckpt_name, save_episode=True, dataset_dirs=None):
-    ### DAgger ###
+    # intervention
+    import rospy
+    from pynput import keyboard 
+    from std_msgs.msg import String
+
     listener = keyboard.Listener(on_press=on_press, on_release=on_release)
     listener.start()
 
     global option
     option = 0
-    dagger = False
-    language_dagger = False
+    language_correction = False
 
     set_seed(1000)
     ckpt_dir = config['ckpt_dir']
@@ -582,7 +395,6 @@ def eval_bc(config, ckpt_name, save_episode=True, dataset_dirs=None):
     use_language = config['use_language']
     language_encoder = config['language_encoder']
     max_skill_len = config['max_skill_len']
-    use_one_hot = config['use_one_hot']
     instructor_path = config['instructor_path']
     history_len = config['history_len']
     history_skip_frame = config['history_skip_frame']
@@ -619,12 +431,9 @@ def eval_bc(config, ckpt_name, save_episode=True, dataset_dirs=None):
     # load environment
     if real_robot:
         from aloha_pro.aloha_scripts.real_env import make_real_env # requires aloha
-        env = make_real_env(init_node=True, only_right=ONLY_RIGHT)
+        from aloha_pro.aloha_scripts.robot_utils import move_grippers
+        env = make_real_env(init_node=True)
         env_max_reward = 0
-        master_bot_left = InterbotixManipulatorXS(robot_model="wx250s", group_name="arm", gripper_name="gripper",
-                                        robot_name=f'master_left', init_node=False)
-        master_bot_right = InterbotixManipulatorXS(robot_model="wx250s", group_name="arm", gripper_name="gripper",
-                                        robot_name=f'master_right', init_node=False)
     else:
         from sim_env import make_sim_env
         env = make_sim_env(task_name)
@@ -644,20 +453,14 @@ def eval_bc(config, ckpt_name, save_episode=True, dataset_dirs=None):
     n_existing_rollouts = len([f for f in os.listdir(ckpt_dir) if f.startswith('video')]) if save_episode else 0
     print(f'{n_existing_rollouts=}')
 
-    # create dataset for language_dagger
+    # create dataset for language_correction
     dataset_dir = dataset_dirs[-1]
-    dataset_dir_language_dagger = dataset_dir + '_language_dagger_v3'
-    if not os.path.isdir(dataset_dir_language_dagger):
-        os.makedirs(dataset_dir_language_dagger)
-    print(f"\nRecording Language DAgger dataset to {dataset_dir_language_dagger}")
+    dataset_dir_language_correction = dataset_dir + '_language_correction_v3'
+    if not os.path.isdir(dataset_dir_language_correction):
+        os.makedirs(dataset_dir_language_correction)
+    print(f"\nRecording language correction dataset to {dataset_dir_language_correction}")
 
-    if DAGGER:
-        dataset_dir_dagger = dataset_dir + '_dagger'
-        if not os.path.isdir(dataset_dir_dagger):
-            os.makedirs(dataset_dir_dagger)
-        print(f"\nRecording DAgger dataset to {dataset_dir_dagger}")
-
-    # set up the instructor
+    # set up the instructor (HL policy)
     if use_instructor:
         device = torch.device("cuda")
         instructor = build_instructor(dataset_dirs, history_len, device=device)
@@ -671,11 +474,8 @@ def eval_bc(config, ckpt_name, save_episode=True, dataset_dirs=None):
     else:
         instructor = None
 
-    # Run the background listening in a separate thread
+    # Run the background listening
     if AUDIO:
-        # stop_listener_thread = threading.Thread(target=background_listening)
-        # stop_listener_thread.daemon = True  # This will allow the program to exit even if the thread is running
-        # stop_listener_thread.start()
         listener_subscriber = rospy.Subscriber(
             "/audio_transcription",
             String,
@@ -719,12 +519,9 @@ def eval_bc(config, ckpt_name, save_episode=True, dataset_dirs=None):
         rewards = []
         command_list = []
         command_embedding = None
-        continue_control = False
-        t = 0
-        prev_t = 0
-        # fixed_command_list = ['pick up the bag', 'pick up the sharpie', 'put the sharpie into the bag', 'release the sharpie', 'pick up the tape', 'put the tape into the bag', 'release the tape', 'pick up the sponge', 'put the sponge into the bag', 'release the sponge', 'release the bag']
+        # fixed_command_list = ['pick up the bag', 'pick up the sharpie', 'put the sharpie into the bag', 'release the sharpie', 'pick up the tape', 'put the tape into the bag', 'release the tape', 'pick up the sponge', 'put the sponge into the bag', 'release the sponge', 'release the bag'] # for ablation
         with torch.inference_mode():
-            while t < max_timesteps:               
+            for t in range(max_timesteps):              
                 ### update onscreen render and wait for DT
                 if onscreen_render:
                     image = env._physics.render(height=480, width=640, camera_id=onscreen_cam)
@@ -750,10 +547,10 @@ def eval_bc(config, ckpt_name, save_episode=True, dataset_dirs=None):
                         if use_instructor:
                             history_obs.append(curr_image)
 
-                        if use_language or use_one_hot:
-                            # Check if an intervention is needed; if so, language dagger
+                        if use_language:
+                            # Check if an intervention is needed; if so, language correction
                             if use_instructor and (intervention_needed.is_set() or option == 2):
-                                language_dagger = True
+                                language_correction = True
                                 print(f"##### Intervention needed at {t=}. Please provide an instruction: #####")
                                 last_command = command
                                 intervention_needed.set()
@@ -761,31 +558,23 @@ def eval_bc(config, ckpt_name, save_episode=True, dataset_dirs=None):
                                 # Reset the intervention flag after handling the input
                                 intervention_needed.clear()
 
-                                command_embedding = generate_command_embedding(command, t, language_encoder, tokenizer, model, use_one_hot=use_one_hot)
+                                command_embedding = generate_command_embedding(command, t, language_encoder, tokenizer, model)
 
                                 # Initialize the segment data with previous observations of length hl_margin
                                 ts_segment = list(history_ts)
                                 ts_segment[0].observation['option'] = -1
                                 segment_data = {'ts': ts_segment, 'actions': list(history_acs), 'command': command}  # Initialize segment data
 
-                                dataset_path_language_dagger, episode_idx_language_dagger = create_dataset_path(dataset_dir_language_dagger)
+                                dataset_path_language_correction, episode_idx_language_correction = create_dataset_path(dataset_dir_language_correction)
                                 # save an image of the current timestep, with predicted_instruction and command overlaid
-                                visualize_language_dagger(curr_image, last_command, command, dataset_dir_language_dagger, episode_idx_language_dagger) 
+                                visualize_language_correction(curr_image, last_command, command, dataset_dir_language_correction, episode_idx_language_correction) 
                                 
-                            elif t % max_skill_len == 0 and not language_dagger:
+                            elif t % max_skill_len == 0 and not language_correction:
                                 if t < 150: # deterministic
-                                    command = "pick up the bag"
-                                # if t < 150: # deterministic
-                                #     command = "pick up the plate"
+                                    command = "pick up the bag" # "pick up the plate"
                                 elif use_instructor:
                                     last_command = command
-                                    command = predict_instruction(instructor, history_obs, history_skip_frame, query_frequency)
-                                    # hack: ask the user to confirm if it should release the bag
-                                    if last_command != "release the bag" and command == "release the bag":
-                                        do_not_release = input("Release the bag? (y/n): ") != "y"
-                                        if do_not_release:
-                                            command = input("What do you want? ") 
-                                            intervention_needed.set()                                                        
+                                    command = predict_instruction(instructor, history_obs, history_skip_frame, query_frequency)                                                      
                                 else:
                                     intervention_needed.set()
                                     command = get_user_command()
@@ -795,7 +584,7 @@ def eval_bc(config, ckpt_name, save_episode=True, dataset_dirs=None):
                                     # except:
                                     #     command_list.append('')
                                     #     break
-                                command_embedding = generate_command_embedding(command, t, language_encoder, tokenizer, model, use_one_hot=use_one_hot)
+                                command_embedding = generate_command_embedding(command, t, language_encoder, tokenizer, model)
                             
                             assert command_embedding is not None
    
@@ -804,10 +593,9 @@ def eval_bc(config, ckpt_name, save_episode=True, dataset_dirs=None):
                         curr_image = get_image(ts, camera_names)   
                         history_obs.append(curr_image)
   
-                    if use_language or use_one_hot:
-                        prefix = "user" if language_dagger else "prediction"
+                    if use_language:
+                        prefix = "user" if language_correction else "prediction"
                         command_list.append(f'{prefix}: {command}')
-                        # command_list.append(f'{command}')
 
                     if temporal_agg:
                         all_time_actions[[t], t:t+num_queries] = all_actions
@@ -834,7 +622,7 @@ def eval_bc(config, ckpt_name, save_episode=True, dataset_dirs=None):
                     target_qpos = action
                 
                 ts = env.step(target_qpos)
-                ts.observation['option'] = option if not language_dagger else 4
+                ts.observation['option'] = option if not language_correction else 2
                 if use_instructor:
                     history_ts.append(ts)
                     history_acs.append(action)
@@ -844,8 +632,8 @@ def eval_bc(config, ckpt_name, save_episode=True, dataset_dirs=None):
                 target_qpos_list.append(target_qpos)
                 rewards.append(ts.reward)
 
-                # Check if language_dagger mode is active
-                if language_dagger:
+                # Check if language_correction mode is active
+                if language_correction:
                     # Append data to the segment_data
                     segment_data['ts'].append(ts)
                     segment_data['actions'].append(action)
@@ -853,60 +641,17 @@ def eval_bc(config, ckpt_name, save_episode=True, dataset_dirs=None):
                     # Check if segment is complete
                     if len(segment_data['actions']) >= hl_margin + max_skill_len - 1:
                         # Save the segment
-                        save_trajectory_thread = threading.Thread(target=save_trajectory, args=(dataset_path_language_dagger, segment_data['ts'], segment_data['actions'], camera_names, segment_data['command'], None))
+                        save_trajectory_thread = threading.Thread(target=save_trajectory, args=(dataset_path_language_correction, segment_data['ts'], segment_data['actions'], camera_names, segment_data['command'], None))
                         save_trajectory_thread.start()
-                        language_dagger = False
-                        continue_control = False
-
-                # check if the 3rd pedal is pressed
-                if DAGGER and option == 3:
-                    dagger = True
+                        language_correction = False
 
                 # early termination
                 if option == 5:
                     break
 
-                if dagger:
-                    command = get_user_command()
-                    # sync the master arms position from puppet arms position
-                    sync_puppet_to_master(master_bot_left, master_bot_right, env.puppet_bot_left, env.puppet_bot_right)
-
-                    # after 2 sec, the puppet arms start to follow the master arms
-                    time.sleep(2)
-                    prev_len = len(image_list)
-                    ts, image_list = teleop(env, master_bot_left, master_bot_right, dataset_dir_dagger, ts, camera_names, image_list, command)
-                    
-                    # repeat the command for the teleop_t timesteps to align with the image_list
-                    new_len = len(image_list)
-                    teleop_t = new_len - prev_len
-                    for _ in range(teleop_t):
-                        command_list.append(f"dagger: {command}")
-
-                    # the 3rd pedal is released, torque on both master bots
-                    torque_on(master_bot_left)
-                    torque_on(master_bot_right)
-
-                    # continue the policy execution
-                    dagger = False
-
-                    # increase t so that the policy will be queried in the next timestep
-                    remainder = t % query_frequency
-                    if remainder:
-                        t += query_frequency - remainder
-
-                    # reset the action buffer
-                    if temporal_agg:
-                        all_time_actions.fill_(0)
-                else:
-                    t += 1
-
             plt.close()
         if real_robot:
-            if ONLY_RIGHT:
-                move_grippers([env.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN], move_time=0.5)  # open
-            else:
-                move_grippers([env.puppet_bot_left, env.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=0.5)  # open
-            pass
+            move_grippers([env.puppet_bot_left, env.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=0.5)  # open
 
         rewards = np.array(rewards)
         episode_return = np.sum(rewards[rewards!=None])
@@ -918,8 +663,8 @@ def eval_bc(config, ckpt_name, save_episode=True, dataset_dirs=None):
             wandb.log({"test/episode_return": episode_return, "test/episode_highest_reward": episode_highest_reward, "test/env_max_reward": env_max_reward, "test/success": episode_highest_reward==env_max_reward}, step=rollout_id)
 
         if save_episode:
-            is_language_dagger = 'ld' in instructor_path.split('/')[-2] if use_instructor else False
-            postfix = f'_ld' if is_language_dagger else ''
+            is_language_correction = 'ld' in instructor_path.split('/')[-2] if use_instructor else False
+            postfix = f'_lc' if is_language_correction else ''
             video_name = f'video{rollout_id+n_existing_rollouts}{postfix}.mp4'
             save_videos(image_list, DT, video_path=os.path.join(ckpt_dir, video_name), cam_names=camera_names, command_list=command_list)
             if log_wandb:
@@ -952,7 +697,7 @@ def eval_bc(config, ckpt_name, save_episode=True, dataset_dirs=None):
 
 
 def forward_pass(data, policy):
-    if len(data) == 5: # use_language or use_one_hot
+    if len(data) == 5: # use_language
         image_data, qpos_data, action_data, is_pad, command_embedding = data
         command_embedding = command_embedding.cuda()
     else:
@@ -980,7 +725,7 @@ def train_bc(train_dataloader, config):
     # if ckpt_dir is not empty, prompt the user to load the checkpoint
     if os.path.isdir(ckpt_dir) and len(os.listdir(ckpt_dir)) > 2:
         print(f"Checkpoint directory {ckpt_dir} is not empty. Load checkpoint? (y/n)")
-        load_ckpt = input() if not CLUSTER else "y"
+        load_ckpt = input()
         if load_ckpt == "y":
             # load the latest checkpoint
             latest_idx = max(
@@ -1091,20 +836,19 @@ if __name__ == '__main__':
     parser.add_argument('--dim_feedforward', action='store', type=int, help='dim_feedforward', required=False)
     parser.add_argument('--temporal_agg', action='store_true')
 
-    # language dagger
+    # language correction
     parser.add_argument('--log_wandb', action='store_true')
     parser.add_argument('--command', action='store', type=str, help='comma-separated list of commands', default='', required=False)
     parser.add_argument('--gpu', action='store', type=int, help='gpu', default=0, required=False)
     parser.add_argument('--use_language', action='store_true')
     parser.add_argument('--language_encoder', action='store', type=str, choices=['distilbert', 'clip'], default='distilbert', help='Type of language encoder to use: distilbert or clip', required=False)
     parser.add_argument('--max_skill_len', action='store', type=int, help='max_skill_len', required=False)
-    parser.add_argument('--use_one_hot', action='store_true')
     parser.add_argument("--image_encoder", type=str, default='resnet18', choices=['resnet18', 'resnet34', 'resnet50', 'efficientnet_b0', 'efficientnet_b3', 'resnet18film', 'resnet34film', 'resnet50film','efficientnet_b0film', 'efficientnet_b3film', 'efficientnet_b5film'], help="Which image encoder to use for the BC policy.")
     parser.add_argument('--low_res', action='store', type=int, help='lower resolution by a factor', required=False, default=1)
     parser.add_argument('--multi_gpu', action='store_true')
     parser.add_argument('--instructor_path', action='store', type=str, help='instructor_path', required=False)
     parser.add_argument('--history_len', action='store', type=int, help='history_len', default=2)
     parser.add_argument('--history_skip_frame', action='store', type=int, help='history_skip_frame', default=50)
-    parser.add_argument('--hl_margin', action='store', type=int, help='the number of timesteps to record before and after language dagger', default=100)
+    parser.add_argument('--hl_margin', action='store', type=int, help='the number of timesteps to record before and after language correction', default=100)
 
     main(vars(parser.parse_args()))

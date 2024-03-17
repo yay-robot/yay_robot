@@ -2,29 +2,29 @@
 Example usage:
 
 python instructor/train.py \
-    --task_name aloha_bag_3_objects aloha_bag_3_objects_ethan_v0 aloha_bag_3_objects_ethan_v1 aloha_bag_3_objects_ethan_v2 \
-    --ckpt_dir /scr/lucyshi/instructor_ckpt/aloha_bag_v0_v1_v2_his_2_sf_50_offset_10_lr \
+    --task_name aloha_bag_3_objects aloha_bag_3_objects_d1_v0 aloha_bag_3_objects_d1_v1 aloha_bag_3_objects_d1_v2 \
+    --ckpt_dir /scr/lucyshi/hl_ckpt/aloha_bag_v0_v1_v2_his_2_sf_50_offset_10_lr \
     --batch_size 16 --num_epochs 1000  --lr 1e-4 \
     --seed 0 --gpu 1 --test_only 
 
 """
 import torch
 import torch.optim as optim
-from tqdm import tqdm
 import argparse
 import os
 import numpy as np
 import wandb
-from PIL import Image, ImageDraw, ImageFont
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE
-from collections import OrderedDict
 import threading
 import sys
-sys.path.append('/home/lucyshi/code/language-dagger/src') # to import aloha
-sys.path.append('/iris/u/lucyshi/language-dagger/src') # for cluster
-sys.path.append('/home/huzheyuan/Desktop/language-dagger/src') # for zheyuan
+sys.path.append('/home/lucyshi/code/yay_robot/src') # to import aloha
+sys.path.append('/iris/u/lucyshi/yay_robot/src') # for cluster
+sys.path.append('/home/huzheyuan/Desktop/yay_robot/src') # for zheyuan
+from tqdm import tqdm
+from PIL import Image, ImageDraw, ImageFont
+from sklearn.manifold import TSNE
+from collections import OrderedDict
 
 from instructor.dataset import load_merged_data
 from instructor.model import Instructor
@@ -323,11 +323,9 @@ if __name__ == "__main__":
         if os.path.exists(wandb_run_id_path):
             with open(wandb_run_id_path, 'r') as f:
                 saved_run_id = f.read().strip()
-            wandb.init(project="language-dagger", entity="lucys", name=run_name, resume=saved_run_id)
-            # wandb.init(project="language-dagger", entity="dmc_hand", name=run_name, resume=saved_run_id)
+            wandb.init(project="yay-robot", entity="lucys", name=run_name, resume=saved_run_id)
         else:
-            wandb.init(project="language-dagger", entity="lucys", name=run_name, config=args, resume='allow')  
-            # wandb.init(project="language-dagger", entity="dmc_hand", name=run_name, config=args, resume='allow')
+            wandb.init(project="yay-robot", entity="lucys", name=run_name, config=args, resume='allow')  
             # Ensure the directory exists before trying to open the file
             os.makedirs(os.path.dirname(wandb_run_id_path), exist_ok=True)
             with open(wandb_run_id_path, 'w') as f:

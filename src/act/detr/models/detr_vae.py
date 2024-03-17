@@ -32,7 +32,7 @@ def get_sinusoid_encoding_table(n_position, d_hid):
 
 class DETRVAE(nn.Module):
     """ This is the DETR module that performs object detection """
-    def __init__(self, backbones, transformer, encoder, state_dim, num_queries, camera_names, use_language=False, use_one_hot=False, use_film=False, num_command=2):
+    def __init__(self, backbones, transformer, encoder, state_dim, num_queries, camera_names, use_language=False, use_film=False, num_command=2):
         """ Initializes the model.
         Parameters:
             backbones: torch module of the backbone to be used. See backbone.py
@@ -55,10 +55,7 @@ class DETRVAE(nn.Module):
         self.use_language = use_language
         self.use_film = use_film
         if use_language:
-            self.lang_embed_proj = nn.Linear(768, hidden_dim) # 512 / 768
-        self.use_one_hot = use_one_hot
-        if use_one_hot:
-            self.one_hot_proj = nn.Linear(num_command, self.hidden_dim)
+            self.lang_embed_proj = nn.Linear(768, hidden_dim) # 512 / 768 for clip / distilbert
         if backbones is not None:
             self.input_proj = nn.Conv2d(backbones[0].num_channels, hidden_dim, kernel_size=1)
             self.backbones = nn.ModuleList(backbones)
@@ -80,7 +77,7 @@ class DETRVAE(nn.Module):
 
         # decoder extra parameters
         self.latent_out_proj = nn.Linear(self.latent_dim, hidden_dim) # project latent sample to embedding
-        pos_embed_dim = 3 if (self.use_one_hot or self.use_language) else 2
+        pos_embed_dim = 3 if self.use_language else 2
         self.additional_pos_embed = nn.Embedding(pos_embed_dim, hidden_dim) # learned position embedding for proprio and latent
 
     def forward(self, qpos, image, env_state, actions=None, is_pad=None, command_embedding=None):
@@ -98,8 +95,6 @@ class DETRVAE(nn.Module):
         if command_embedding is not None:
             if self.use_language:
                 command_embedding_proj = self.lang_embed_proj(command_embedding)
-            elif self.use_one_hot:
-                command_embedding_proj = self.one_hot_proj(command_embedding)
             else:
                 raise NotImplementedError
 
@@ -153,7 +148,7 @@ class DETRVAE(nn.Module):
             pos = torch.cat(all_cam_pos, axis=3)
 
             # Only append the command embedding if we are using one-hot
-            command_embedding_to_append = command_embedding_proj if (self.use_one_hot or self.use_language) else None
+            command_embedding_to_append = command_embedding_proj if self.use_language else None
 
             hs = self.transformer(src, None, self.query_embed.weight, pos, latent_input, proprio_input, self.additional_pos_embed.weight, command_embedding=command_embedding_to_append)[0]
         else:
@@ -256,15 +251,11 @@ def build_encoder(args):
 def build(args):
     state_dim = 14 # TODO hardcode
 
-    # From state
-    # backbone = None # from state for now, no need for conv nets
     # From image
     backbones = []
     for _ in args.camera_names:
         backbone = build_backbone(args)
         backbones.append(backbone)
-    # backbone = build_backbone(args)
-    # backbones.append(backbone)
 
     transformer = build_transformer(args)
 
@@ -278,7 +269,6 @@ def build(args):
         num_queries=args.num_queries,
         camera_names=args.camera_names,
         use_language=args.use_language,
-        use_one_hot=args.use_one_hot,
         use_film='film' in args.backbone,
     )
 
@@ -290,8 +280,6 @@ def build(args):
 def build_cnnmlp(args):
     state_dim = 14 # TODO hardcode
 
-    # From state
-    # backbone = None # from state for now, no need for conv nets
     # From image
     backbones = []
     for _ in args.camera_names:

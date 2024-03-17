@@ -1,16 +1,59 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.nn import functional as F
 import torchvision.transforms as transforms
+from torch.nn import functional as F
 
 from detr.main import build_ACT_model_and_optimizer, build_CNNMLP_model_and_optimizer
-import IPython
-e = IPython.embed
-
 from detr.models.backbone import FilMedBackbone
 
 
+class ACTPolicy(nn.Module):
+    def __init__(self, args_override):
+        super().__init__()
+        model, optimizer = build_ACT_model_and_optimizer(args_override)
+        self.model = model # CVAE decoder
+        self.optimizer = optimizer
+        self.kl_weight = args_override['kl_weight']
+        print(f'KL Weight {self.kl_weight}')
+        multi_gpu = args_override['multi_gpu']
+        self.num_queries = self.model.module.num_queries if multi_gpu else self.model.num_queries  
+
+    def __call__(self, qpos, image, actions=None, is_pad=None, command_embedding=None):
+        env_state = None
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225])
+        image = normalize(image)
+        if actions is not None: # training time
+            actions = actions[:, :self.num_queries]
+            is_pad = is_pad[:, :self.num_queries]
+
+            a_hat, is_pad_hat, (mu, logvar) = self.model(qpos, image, env_state, actions, is_pad, command_embedding=command_embedding)
+            total_kld, dim_wise_kld, mean_kld = kl_divergence(mu, logvar)
+            loss_dict = dict()
+            all_l1 = F.l1_loss(actions, a_hat, reduction='none')
+            l1 = (all_l1 * ~is_pad.unsqueeze(-1)).mean()
+            loss_dict['l1'] = l1
+            loss_dict['kl'] = total_kld[0]
+            loss_dict['loss'] = loss_dict['l1'] + loss_dict['kl'] * self.kl_weight
+            return loss_dict
+        else: # inference time
+            a_hat, _, (_, _) = self.model(qpos, image, env_state, command_embedding=command_embedding) # no action, sample from prior
+            return a_hat
+
+    def configure_optimizers(self):
+        return self.optimizer
+    
+    def serialize(self):
+        return self.state_dict()
+    
+    def deserialize(self, model_dict):
+        return self.load_state_dict(model_dict)
+
+
+# Not used in this paper. But leave Diffusion Policy integration here in case anyone is interested.
+# Requires installing https://github.com/ARISE-Initiative/robomimic/tree/r2d2 in src (such that src/robomimic is a valid path)
+# Remember to install extra dependencies: $ pip install -e src/robomimic
 class DiffusionPolicy(nn.Module):
     def __init__(self, args_override):
         from robomimic.models.base_nets import ResNet18Conv, SpatialSoftmax
@@ -20,8 +63,7 @@ class DiffusionPolicy(nn.Module):
         super().__init__()
 
         self.camera_names = args_override['camera_names']
-
-        self.observation_horizon = args_override['observation_horizon'] ### TODO TODO TODO DO THIS
+        self.observation_horizon = args_override['observation_horizon'] # TODO
         self.action_horizon = args_override['action_horizon'] # apply chunk size
         self.prediction_horizon = args_override['prediction_horizon'] # chunk size
         self.num_inference_timesteps = args_override['num_inference_timesteps']
@@ -214,53 +256,7 @@ class DiffusionPolicy(nn.Module):
             status = self.nets.load_state_dict(nets_dict)
         print('Loaded diffusion model')
         return status
-
-
-class ACTPolicy(nn.Module):
-    def __init__(self, args_override):
-        super().__init__()
-        model, optimizer = build_ACT_model_and_optimizer(args_override)
-        self.model = model # CVAE decoder
-        self.optimizer = optimizer
-        self.kl_weight = args_override['kl_weight']
-        print(f'KL Weight {self.kl_weight}')
-        multi_gpu = args_override['multi_gpu']
-        self.num_queries = self.model.module.num_queries if multi_gpu else self.model.num_queries  
-
-    def __call__(self, qpos, image, actions=None, is_pad=None, command_embedding=None):
-        env_state = None
-        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                         std=[0.229, 0.224, 0.225])
-        image = normalize(image)
-        # zero out qpos
-        # qpos = torch.zeros_like(qpos)
-        if actions is not None: # training time
-            actions = actions[:, :self.num_queries]
-            is_pad = is_pad[:, :self.num_queries]
-
-            a_hat, is_pad_hat, (mu, logvar) = self.model(qpos, image, env_state, actions, is_pad, command_embedding=command_embedding)
-            total_kld, dim_wise_kld, mean_kld = kl_divergence(mu, logvar)
-            loss_dict = dict()
-            all_l1 = F.l1_loss(actions, a_hat, reduction='none')
-            l1 = (all_l1 * ~is_pad.unsqueeze(-1)).mean()
-            loss_dict['l1'] = l1
-            loss_dict['kl'] = total_kld[0]
-            loss_dict['loss'] = loss_dict['l1'] + loss_dict['kl'] * self.kl_weight
-            return loss_dict
-        else: # inference time
-            a_hat, _, (_, _) = self.model(qpos, image, env_state, command_embedding=command_embedding) # no action, sample from prior
-            return a_hat
-
-    def configure_optimizers(self):
-        return self.optimizer
     
-    def serialize(self):
-        return self.state_dict()
-    
-    def deserialize(self, model_dict):
-        return self.load_state_dict(model_dict)
-
-
 class CNNMLPPolicy(nn.Module):
     def __init__(self, args_override):
         super().__init__()

@@ -1,20 +1,12 @@
-import whisper
 import speech_recognition as sr
 import torch
-import io
 import datetime
-from queue import Queue
-from tempfile import NamedTemporaryFile
 import time
 import sounddevice
 import numpy as np
+from queue import Queue
 from transformers import pipeline
 from transformers.utils import is_flash_attn_2_available
-import subprocess
-import os
-from pynput import keyboard
-
-from .utils import modify_real_time
 
 class AudioTranscriber():
     def __init__(self) -> None:
@@ -35,7 +27,6 @@ class AudioTranscriber():
         # Set up Whisper model
         if "large" not in model_name:
             model_name = model_name + ".en"
-        # self.audio_model = whisper.load_model(model_name)
         pipe = pipeline(
             "automatic-speech-recognition",
             model="openai/whisper-medium.en", # select checkpoint from https://huggingface.co/openai/whisper-large-v3#model-details
@@ -104,56 +95,21 @@ class AudioTranscriber():
                     # Convert raw audio data to numpy array
                     audio_np = np.frombuffer(audio_np, dtype=np.int16).astype(np.float32) / 32768.0
 
-                    # wav_data = audio_data.get_wav_data(
-                    #     convert_rate=16000,
-                    # ) #io.BytesIO(audio_data.get_wav_data())
-                    # Write wav data to the temporary file as bytes.
-                    # temp_file = NamedTemporaryFile().name
-                    # with open(temp_file, 'w+b') as f:
-                    #     f.write(wav_data.read())
-
                     # Read the transcription.
                     start_t = time.time()
-                    # result = self.audio_model.transcribe(audio_np, fp16=torch.cuda.is_available())
                     result = self.audio_model(
                         audio_np,
                         chunk_length_s=5,
                         batch_size=1,
                         return_timestamps=True,
                     )
-                    # Create a subprocess and feed the WAV data into its stdin
-                    # process = subprocess.Popen(
-                    #     # ["./main", "-np", "-m", "models/ggml-medium.en.bin", "-f", "-"],
-                    #     ["./main", "-np", "-m", "models/ggml-medium.en-q5_0.bin", "-f", "-"],
-                    #     cwd=os.path.abspath(os.path.join("/home/huzheyuan/Desktop/", "whisper.cpp")),
-                    #     stdin=subprocess.PIPE,
-                    #     stdout=subprocess.PIPE,
-                    #     stderr=subprocess.PIPE,
-                    # )
-                    # stdout, stderr = process.communicate(input=wav_data)
-                    # if process.returncode != 0 or "error" in stderr.decode("utf-8"):
-                    #     print(stderr.decode("utf-8"))
-                    #     return "Error converting file", 500
-
-                    # result = {"text": "".join(
-                    #     [
-                    #         line[line.index("]") + 1 :].strip()
-                    #         for line in stdout.decode("utf-8").split("\n")
-                    #         if line.startswith("[")
-                    #     ]
-                    # )}
                     print(f"Time taken decode: {time.time() - start_t}")
-                    # print(f"raw result: {result['text']}")
                     text = result['text'].lower().rstrip(',.;:?!').strip()
-                    # text = modify_real_time(result['text'])
-                    # print(f"modified result: {text}")
 
                     # Check if the transcribed text is the stop word
-                    # if text in ["stop", "pardon", "wait", "stop robot", "stop stop"]:
-                    if "stop" in text or (self.transcription and "stop" in self.transcription[-1]):
-                        return "stop"
-                    if "pardon" in text or (self.transcription and "pardon" in self.transcription[-1]):
-                        return "pardon"
+                    for stop_word in ["stop", "pardon", "wait"]:
+                        if stop_word in text or (self.transcription and stop_word in self.transcription[-1]):
+                            return stop_word
 
                     # If we detected a pause between recordings, add a new item to our transcription.
                     # Otherwise edit the existing one.

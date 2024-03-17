@@ -3,8 +3,8 @@
 # LL (ws)
 launchl
 python act/imitate_episodes.py \
-    --task_name aloha_trail_mix aloha_trail_mix_ethan_v0 aloha_trail_mix_johnny_v1\
-    --ckpt_dir /scr/lucyshi/act_ckpt/aloha_trail_mix_bs16_0218 \
+    --task_name aloha_trail_mix aloha_trail_mix_d1_v0 aloha_trail_mix_d2_v1\
+    --ckpt_dir /scr/lucyshi/ll_ckpt/aloha_trail_mix_bs16_0218 \
     --policy_class ACT --kl_weight 80 --chunk_size 100 --hidden_dim 512 --batch_size 24 --dim_feedforward 3200 \
     --use_language --language_encoder distilbert --max_skill_len 200 --num_epochs 30000  --lr 1e-4 \
     --image_encoder efficientnet_b3film --seed 0 --log_wandb --multi_gpu
@@ -12,16 +12,16 @@ python act/imitate_episodes.py \
 # HL (ws)
 launchl
 python instructor/train.py \
-    --task_name aloha_trail_mix aloha_trail_mix_ethan_v0 aloha_trail_mix_johnny_v1 \
-    --ckpt_dir /scr/lucyshi/instructor_ckpt/aloha_trail_mix_bs128_0219 \
+    --task_name aloha_trail_mix aloha_trail_mix_d1_v0 aloha_trail_mix_d2_v1 \
+    --ckpt_dir /scr/lucyshi/hl_ckpt/aloha_trail_mix_bs128_0219 \
     --batch_size 128 --num_epochs 15000  --lr 1e-4 --random_crop \
     --history_skip_frame 50 --prediction_offset 20 --history_len 1 --seed 0 --log_wandb --gpu 1
 
 # HL-LD (ws)
 launchl
 python instructor/train.py \
-    --task_name aloha_trail_mix aloha_trail_mix_ethan_v0 aloha_trail_mix_johnny_v1 aloha_trail_mix_language_dagger_v0 aloha_trail_mix_language_dagger_v1 aloha_trail_mix_language_dagger_v2 aloha_trail_mix_language_dagger_v3\
-    --ckpt_dir /scr/lucyshi/instructor_ckpt/aloha_trail_mix_bs128_0219_ld_uniform \
+    --task_name aloha_trail_mix aloha_trail_mix_d1_v0 aloha_trail_mix_d2_v1 aloha_trail_mix_yay_robot_v0 aloha_trail_mix_yay_robot_v1 aloha_trail_mix_yay_robot_v2 aloha_trail_mix_yay_robot_v3\
+    --ckpt_dir /scr/lucyshi/hl_ckpt/aloha_trail_mix_bs128_0219_ld_uniform \
     --batch_size 64 --num_epochs 5000  --lr 1e-4 --random_crop \
     --history_skip_frame 50 --prediction_offset 20 --history_len 1 --seed 0 --log_wandb --gpu 1
  
@@ -29,8 +29,8 @@ python instructor/train.py \
 # LL (sc)
 launchl
 python act/imitate_episodes.py \
-    --task_name aloha_bag_3_objects aloha_bag_3_objects_ethan_v0 aloha_bag_3_objects_ethan_v1 aloha_bag_3_objects_ethan_v2 aloha_bag_3_objects_ethan_v3 aloha_bag_3_objects_johnny_v1_sponge aloha_bag_3_objects_johnny_v1 \
-    --ckpt_dir /scr/lucyshi/act_ckpt/aloha_bag_0218 \
+    --task_name aloha_bag_3_objects aloha_bag_3_objects_d1_v0 aloha_bag_3_objects_d1_v1 aloha_bag_3_objects_d1_v2 aloha_bag_3_objects_d1_v3 aloha_bag_3_objects_d2_v1_sponge aloha_bag_3_objects_d2_v1 \
+    --ckpt_dir /scr/lucyshi/ll_ckpt/aloha_bag_0218 \
     --policy_class ACT --kl_weight 80 --chunk_size 100 --hidden_dim 512 --batch_size 24 --dim_feedforward 3200 \
     --use_language --language_encoder distilbert --max_skill_len 200 --num_epochs 30000  --lr 1e-4 \
     --image_encoder efficientnet_b3film --seed 0 --log_wandb 
@@ -38,16 +38,16 @@ python act/imitate_episodes.py \
 # HL (sc)
 launchl
 python instructor/train.py \
-    --task_name aloha_bag_3_objects aloha_bag_3_objects_ethan_v0 aloha_bag_3_objects_ethan_v1 aloha_bag_3_objects_ethan_v2 aloha_bag_3_objects_ethan_v3 aloha_bag_3_objects_johnny_v1_sponge aloha_bag_3_objects_johnny_v1\
-    --ckpt_dir /scr/lucyshi/instructor_ckpt/aloha_bag_his_3_0218 \
+    --task_name aloha_bag_3_objects aloha_bag_3_objects_d1_v0 aloha_bag_3_objects_d1_v1 aloha_bag_3_objects_d1_v2 aloha_bag_3_objects_d1_v3 aloha_bag_3_objects_d2_v1_sponge aloha_bag_3_objects_d2_v1\
+    --ckpt_dir /scr/lucyshi/hl_ckpt/aloha_bag_his_3_0218 \
     --batch_size 64 --num_epochs 15000  --lr 1e-4\
     --history_skip_frame 50 --prediction_offset 20 --history_len 3 --seed 0 --log_wandb
 
 # HL-LD (ws)
 launchl
 python instructor/train.py \
-    --task_name aloha_bag_3_objects aloha_bag_3_objects_ethan_v0 aloha_bag_3_objects_ethan_v1 aloha_bag_3_objects_ethan_v2 aloha_bag_3_objects_ethan_v3 aloha_bag_3_objects_johnny_v1_sponge aloha_bag_3_objects_johnny_v1 aloha_bag_3_objects_johnny_v1_language_dagger_v1 aloha_bag_3_objects_johnny_v1_language_dagger_v2 aloha_bag_3_objects_johnny_v1_language_dagger\
-    --ckpt_dir /scr/lucyshi/instructor_ckpt/aloha_bag_his_3_0218_ld01 \
+    --task_name aloha_bag_3_objects aloha_bag_3_objects_d1_v0 aloha_bag_3_objects_d1_v1 aloha_bag_3_objects_d1_v2 aloha_bag_3_objects_d1_v3 aloha_bag_3_objects_d2_v1_sponge aloha_bag_3_objects_d2_v1 aloha_bag_3_objects_d2_v1_yay_robot_v1 aloha_bag_3_objects_d2_v1_yay_robot_v2 aloha_bag_3_objects_d2_v1_yay_robot\
+    --ckpt_dir /scr/lucyshi/hl_ckpt/aloha_bag_his_3_0218_ld01 \
     --batch_size 64 --num_epochs 5000 --lr 1e-4 --dagger_ratio 0.1\
     --history_skip_frame 50 --prediction_offset 20 --history_len 3 --seed 0 --log_wandb --gpu 1
 
@@ -56,27 +56,27 @@ python instructor/train.py \
 # [29100] trail mix
 launchl
 python act/imitate_episodes.py \
-    --task_name aloha_trail_mix aloha_trail_mix_ethan_v0 aloha_trail_mix_johnny_v1\
-    --ckpt_dir /scr/lucyshi/act_ckpt/aloha_trail_mix_bs16_0218 \
+    --task_name aloha_trail_mix aloha_trail_mix_d1_v0 aloha_trail_mix_d2_v1\
+    --ckpt_dir /scr/lucyshi/ll_ckpt/aloha_trail_mix_bs16_0218 \
     --policy_class ACT --kl_weight 80 --chunk_size 100 --hidden_dim 512 --batch_size 22 --dim_feedforward 3200 \
     --use_language --language_encoder distilbert --max_skill_len 200 --num_epochs 30000  --lr 1e-4 \
     --image_encoder efficientnet_b3film --seed 0 --log_wandb --eval\
     --history_len 1 --history_skip_frame 50 \
-    --instructor_path /scr/lucyshi/instructor_ckpt/aloha_trail_mix_bs128_0219_ld_uniform/epoch_4900.ckpt
+    --instructor_path /scr/lucyshi/hl_ckpt/aloha_trail_mix_bs128_0219_ld_uniform/epoch_4900.ckpt
 
-    # --instructor_path /scr/lucyshi/instructor_ckpt/aloha_trail_mix_bs128_0219/epoch_14900.ckpt
-    # --instructor_path /scr/lucyshi/instructor_ckpt/aloha_trail_mix_bs128_0219_ld_uniform/epoch_4900.ckpt
+    # --instructor_path /scr/lucyshi/hl_ckpt/aloha_trail_mix_bs128_0219/epoch_14900.ckpt
+    # --instructor_path /scr/lucyshi/hl_ckpt/aloha_trail_mix_bs128_0219_ld_uniform/epoch_4900.ckpt
 
 # [0] bag
 launchl
 python act/imitate_episodes.py \
-    --task_name aloha_bag_3_objects aloha_bag_3_objects_ethan_v0 aloha_bag_3_objects_ethan_v1 aloha_bag_3_objects_ethan_v2 aloha_bag_3_objects_ethan_v3 aloha_bag_3_objects_johnny_v1_sponge aloha_bag_3_objects_johnny_v1 \
-    --ckpt_dir /scr/lucyshi/act_ckpt/aloha_bag_0218 \
+    --task_name aloha_bag_3_objects aloha_bag_3_objects_d1_v0 aloha_bag_3_objects_d1_v1 aloha_bag_3_objects_d1_v2 aloha_bag_3_objects_d1_v3 aloha_bag_3_objects_d2_v1_sponge aloha_bag_3_objects_d2_v1 \
+    --ckpt_dir /scr/lucyshi/ll_ckpt/aloha_bag_0218 \
     --policy_class ACT --kl_weight 80 --chunk_size 100 --hidden_dim 512 --batch_size 24 --dim_feedforward 3200 \
     --use_language --language_encoder distilbert --max_skill_len 200 --num_epochs 30000  --lr 1e-4 \
     --image_encoder efficientnet_b3film --seed 0 --log_wandb --eval\
     --history_len 3 --history_skip_frame 50 \
-    --instructor_path /scr/lucyshi/instructor_ckpt/aloha_bag_his_3_0218/epoch_14900.ckpt
+    --instructor_path /scr/lucyshi/hl_ckpt/aloha_bag_his_3_0218/epoch_14900.ckpt
 
-    # --instructor_path /scr/lucyshi/instructor_ckpt/aloha_bag_his_3_0218/epoch_14900.ckpt
-    # --instructor_path /scr/lucyshi/instructor_ckpt/aloha_bag_his_3_0218_ld01/epoch_1400.ckpt
+    # --instructor_path /scr/lucyshi/hl_ckpt/aloha_bag_his_3_0218/epoch_14900.ckpt
+    # --instructor_path /scr/lucyshi/hl_ckpt/aloha_bag_his_3_0218_ld01/epoch_1400.ckpt

@@ -11,9 +11,9 @@ import argparse
 from tqdm import tqdm
 import numpy as np
 import sys
-sys.path.append('/home/lucyshi/code/language-dagger/src') # to import aloha
-sys.path.append('/iris/u/lucyshi/language-dagger/src') # for cluster
-sys.path.append('/home/huzheyuan/Desktop/language-dagger/src')
+sys.path.append('/home/lucyshi/code/yay_robot/src') # to import aloha
+sys.path.append('/iris/u/lucyshi/yay_robot/src') # for cluster
+sys.path.append('/home/huzheyuan/Desktop/yay_robot/src')
 from aloha_pro.aloha_scripts.utils import initialize_model_and_tokenizer, encode_text
 
 

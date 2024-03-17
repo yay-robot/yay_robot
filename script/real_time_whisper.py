@@ -2,8 +2,8 @@ import argparse
 import os
 import sys
 from sys import platform
-sys.path.append('/home/lucyshi/code/language-dagger/src')
-sys.path.append('/home/huzheyuan/Desktop/language-dagger/src')
+sys.path.append('/home/lucyshi/code/yay_robot/src')
+sys.path.append('/home/huzheyuan/Desktop/yay_robot/src')
 from aloha_pro.aloha_scripts.audio_utils import AudioTranscriber
 import rospy
 from std_msgs.msg import String
@@ -78,10 +78,6 @@ def main(args):
         if command:
             transcriber_publisher.publish(command)
             print(command)
-
-    # print("\n\nTranscription:")
-    # for line in transcription:
-    #     print(line)
 
 
 if __name__ == "__main__":

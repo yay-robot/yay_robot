@@ -14,8 +14,8 @@ from tqdm import tqdm
 import glob
 from collections import Counter
 
-import sys; sys.path.append('/home/lucyshi/code/language-dagger/src') # to import aloha
-sys.path.append('/home/huzheyuan/Desktop/language-dagger/src')
+import sys; sys.path.append('/home/lucyshi/code/yay_robot/src') # to import aloha
+sys.path.append('/home/huzheyuan/Desktop/yay_robot/src')
 from aloha_pro.aloha_scripts.utils import break_text, modify_transcription
 
 def load_hdf5(dataset_dir, dataset_name):
