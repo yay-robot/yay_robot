@@ -1,17 +1,24 @@
 import subprocess
 import json
 
+
 def get_duration(file_path):
     """Get the duration of a media file using ffprobe."""
     cmd = [
-        "ffprobe", 
-        "-v", "error", 
-        "-show_entries", "format=duration", 
-        "-of", "json", 
-        file_path
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "json",
+        file_path,
     ]
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    return float(json.loads(result.stdout)['format']['duration'])
+    result = subprocess.run(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
+    return float(json.loads(result.stdout)["format"]["duration"])
+
 
 # Paths to the input video and audio files
 idx = 18
@@ -29,15 +36,23 @@ speedup_ratio = audio_duration / video_duration
 # Command to combine the video and audio using ffmpeg
 command = [
     "ffmpeg",
-    "-i", video_path,
-    "-filter_complex", f"[1:a]atempo={speedup_ratio}[aout]", # speed up audio
-    "-i", audio_path,
-    "-map", "0:v", # map video from first input
-    "-map", "[aout]", # map audio from filter complex
-    "-c:v", "copy",
-    "-c:a", "aac",
-    "-strict", "experimental",
-    output_path
+    "-i",
+    video_path,
+    "-filter_complex",
+    f"[1:a]atempo={speedup_ratio}[aout]",  # speed up audio
+    "-i",
+    audio_path,
+    "-map",
+    "0:v",  # map video from first input
+    "-map",
+    "[aout]",  # map audio from filter complex
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    "-strict",
+    "experimental",
+    output_path,
 ]
 
 # Execute the command

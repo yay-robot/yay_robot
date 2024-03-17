@@ -7,6 +7,7 @@ from .models import build_ACT_model, build_CNNMLP_model
 import IPython
 e = IPython.embed
 
+
 def get_args_parser():
     parser = argparse.ArgumentParser('Set transformer detector', add_help=False)
     parser.add_argument('--lr', default=1e-4, type=float) # will be overridden
@@ -68,7 +69,7 @@ def get_args_parser():
     parser.add_argument('--use_language', action='store_true')
     parser.add_argument('--language_encoder', action='store', type=str, choices=['distilbert', 'clip'], default='distilbert', help='Type of language encoder to use: distilbert or clip', required=False)
     parser.add_argument('--max_skill_len', action='store', type=int, help='max_skill_len', required=False)
-    parser.add_argument("--image_encoder", type=str, default='resnet18', choices=['resnet18', 'resnet34', 'resnet50', 'efficientnet_b0', 'efficientnet_b3', 'resnet18film', 'resnet34film', 'resnet50film','efficientnet_b0film', 'efficientnet_b3film', 'efficientnet_b5film'], help="Which image encoder to use for the BC policy.")
+    parser.add_argument('--image_encoder', type=str, default='resnet18', choices=['resnet18', 'resnet34', 'resnet50', 'efficientnet_b0', 'efficientnet_b3', 'resnet18film', 'resnet34film', 'resnet50film','efficientnet_b0film', 'efficientnet_b3film', 'efficientnet_b5film'], help="Which image encoder to use for the BC policy.")
     parser.add_argument('--multi_gpu', action='store_true')
     parser.add_argument('--instructor_path', action='store', type=str, help='instructor_path', required=False)
     parser.add_argument('--history_len', action='store', type=int, help='history_len', default=2)
@@ -79,7 +80,9 @@ def get_args_parser():
 
 
 def build_ACT_model_and_optimizer(args_override):
-    parser = argparse.ArgumentParser('DETR training and evaluation script', parents=[get_args_parser()])
+    parser = argparse.ArgumentParser(
+        "DETR training and evaluation script", parents=[get_args_parser()]
+    )
     args = parser.parse_args()
 
     for k, v in args_override.items():
@@ -96,21 +99,34 @@ def build_ACT_model_and_optimizer(args_override):
     model.to(device)
 
     param_dicts = [
-        {"params": [p for n, p in model.named_parameters() if "backbone" not in n and p.requires_grad]},
         {
-            "params": [p for n, p in model.named_parameters() if "backbone" in n and p.requires_grad],
+            "params": [
+                p
+                for n, p in model.named_parameters()
+                if "backbone" not in n and p.requires_grad
+            ]
+        },
+        {
+            "params": [
+                p
+                for n, p in model.named_parameters()
+                if "backbone" in n and p.requires_grad
+            ],
             "lr": args.lr_backbone,
         },
     ]
     # param_dicts = model.parameters() # used in act-pro-max
-    optimizer = torch.optim.AdamW(param_dicts, lr=args.lr,
-                                  weight_decay=args.weight_decay)
+    optimizer = torch.optim.AdamW(
+        param_dicts, lr=args.lr, weight_decay=args.weight_decay
+    )
 
     return model, optimizer
 
 
 def build_CNNMLP_model_and_optimizer(args_override):
-    parser = argparse.ArgumentParser('DETR training and evaluation script', parents=[get_args_parser()])
+    parser = argparse.ArgumentParser(
+        "DETR training and evaluation script", parents=[get_args_parser()]
+    )
     args = parser.parse_args()
 
     for k, v in args_override.items():
@@ -120,14 +136,24 @@ def build_CNNMLP_model_and_optimizer(args_override):
     model.cuda()
 
     param_dicts = [
-        {"params": [p for n, p in model.named_parameters() if "backbone" not in n and p.requires_grad]},
         {
-            "params": [p for n, p in model.named_parameters() if "backbone" in n and p.requires_grad],
+            "params": [
+                p
+                for n, p in model.named_parameters()
+                if "backbone" not in n and p.requires_grad
+            ]
+        },
+        {
+            "params": [
+                p
+                for n, p in model.named_parameters()
+                if "backbone" in n and p.requires_grad
+            ],
             "lr": args.lr_backbone,
         },
     ]
-    optimizer = torch.optim.AdamW(param_dicts, lr=args.lr,
-                                  weight_decay=args.weight_decay)
+    optimizer = torch.optim.AdamW(
+        param_dicts, lr=args.lr, weight_decay=args.weight_decay
+    )
 
     return model, optimizer
-

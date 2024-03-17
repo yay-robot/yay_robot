@@ -5,7 +5,8 @@ import json
 def load_annotations(json_path):
     with open(json_path, "r") as file:
         annotations = json.load(file)
-    return annotations['annotation']['actionAnnotationList']
+    return annotations["annotation"]["actionAnnotationList"]
+
 
 # Function to overlay text on video with larger font
 def overlay_text_on_video_larger_font(video_path, annotations, output_path):
@@ -14,14 +15,14 @@ def overlay_text_on_video_larger_font(video_path, annotations, output_path):
     fps = int(cap.get(cv2.CAP_PROP_FPS))
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
     frame_count = 0
     for annotation in annotations:
-        start_frame = int(annotation['start'] * fps)
-        end_frame = int(annotation['end'] * fps)
-        description = annotation['description']
+        start_frame = int(annotation["start"] * fps)
+        end_frame = int(annotation["end"] * fps)
+        description = annotation["description"]
 
         while frame_count < end_frame:
             ret, frame = cap.read()
@@ -30,7 +31,16 @@ def overlay_text_on_video_larger_font(video_path, annotations, output_path):
 
             # Overlay text if within the annotated time range
             if start_frame <= frame_count < end_frame:
-                cv2.putText(frame, description, (10, height - 30), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 255), 4, cv2.LINE_AA)
+                cv2.putText(
+                    frame,
+                    description,
+                    (10, height - 30),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1.5,
+                    (0, 255, 255),
+                    4,
+                    cv2.LINE_AA,
+                )
 
             out.write(frame)
             frame_count += 1
@@ -44,6 +54,7 @@ def overlay_text_on_video_larger_font(video_path, annotations, output_path):
 
     cap.release()
     out.release()
+
 
 # Load annotations and process video
 json_path = "/path_to_json_file.json"

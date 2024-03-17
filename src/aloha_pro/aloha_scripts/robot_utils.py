@@ -3,12 +3,21 @@ import time
 from constants import DT
 from interbotix_xs_msgs.msg import JointSingleCommand
 from aloha_pro.msg import RGBGrayscaleImage
-from aloha_pro.aloha_scripts.robot_utils import move_arms, torque_on, torque_off, get_arm_joint_positions, get_arm_gripper_positions, move_grippers
+from aloha_pro.aloha_scripts.robot_utils import (
+    move_arms,
+    torque_on,
+    torque_off,
+    get_arm_joint_positions,
+    get_arm_gripper_positions,
+    move_grippers,
+)
 from aloha_pro.aloha_scripts.real_env import get_action
 from aloha_pro.aloha_scripts.utils import create_dataset_path, save_trajectory
 
 import IPython
+
 e = IPython.embed
+
 
 class ImageRecorder:
     def __init__(self, init_node=True, is_debug=False):
@@ -16,69 +25,88 @@ class ImageRecorder:
         import rospy
         from cv_bridge import CvBridge
         from sensor_msgs.msg import Image
+
         self.is_debug = is_debug
         self.bridge = CvBridge()
-        self.camera_names = ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist']
+        self.camera_names = ["cam_high", "cam_low", "cam_left_wrist", "cam_right_wrist"]
 
         if init_node:
-            rospy.init_node('image_recorder', anonymous=True)
+            rospy.init_node("image_recorder", anonymous=True)
         for cam_name in self.camera_names:
-            setattr(self, f'{cam_name}_rgb_image', None)
-            setattr(self, f'{cam_name}_depth_image', None)
-            setattr(self, f'{cam_name}_timestamp', 0.)
-            if cam_name == 'cam_high':
+            setattr(self, f"{cam_name}_rgb_image", None)
+            setattr(self, f"{cam_name}_depth_image", None)
+            setattr(self, f"{cam_name}_timestamp", 0.0)
+            if cam_name == "cam_high":
                 callback_func = self.image_cb_cam_high
-            elif cam_name == 'cam_low':
+            elif cam_name == "cam_low":
                 callback_func = self.image_cb_cam_low
-            elif cam_name == 'cam_left_wrist':
+            elif cam_name == "cam_left_wrist":
                 callback_func = self.image_cb_cam_left_wrist
-            elif cam_name == 'cam_right_wrist':
+            elif cam_name == "cam_right_wrist":
                 callback_func = self.image_cb_cam_right_wrist
             else:
                 raise NotImplementedError
             rospy.Subscriber(f"/{cam_name}", RGBGrayscaleImage, callback_func)
             if self.is_debug:
-                setattr(self, f'{cam_name}_timestamps', deque(maxlen=50))
+                setattr(self, f"{cam_name}_timestamps", deque(maxlen=50))
 
-        self.cam_last_timestamps = {cam_name: 0. for cam_name in self.camera_names}
+        self.cam_last_timestamps = {cam_name: 0.0 for cam_name in self.camera_names}
         time.sleep(0.5)
 
     def image_cb(self, cam_name, data):
-        setattr(self, f'{cam_name}_rgb_image', self.bridge.imgmsg_to_cv2(data.images[0], desired_encoding='bgr8'))
-        setattr(self, f'{cam_name}_depth_image', self.bridge.imgmsg_to_cv2(data.images[1], desired_encoding='mono16'))
-        setattr(self, f'{cam_name}_timestamp', data.header.stamp.secs + data.header.stamp.nsecs * 1e-9)
+        setattr(
+            self,
+            f"{cam_name}_rgb_image",
+            self.bridge.imgmsg_to_cv2(data.images[0], desired_encoding="bgr8"),
+        )
+        setattr(
+            self,
+            f"{cam_name}_depth_image",
+            self.bridge.imgmsg_to_cv2(data.images[1], desired_encoding="mono16"),
+        )
+        setattr(
+            self,
+            f"{cam_name}_timestamp",
+            data.header.stamp.secs + data.header.stamp.nsecs * 1e-9,
+        )
         # setattr(self, f'{cam_name}_secs', data.images[0].header.stamp.secs)
         # setattr(self, f'{cam_name}_nsecs', data.images[0].header.stamp.nsecs)
         # cv2.imwrite('/home/lucyshi/Desktop/sample.jpg', cv_image)
         if self.is_debug:
-            getattr(self, f'{cam_name}_timestamps').append(data.images[0].header.stamp.secs + data.images[0].header.stamp.nsecs * 1e-9)
+            getattr(self, f"{cam_name}_timestamps").append(
+                data.images[0].header.stamp.secs
+                + data.images[0].header.stamp.nsecs * 1e-9
+            )
 
     def image_cb_cam_high(self, data):
-        cam_name = 'cam_high'
+        cam_name = "cam_high"
         return self.image_cb(cam_name, data)
 
     def image_cb_cam_low(self, data):
-        cam_name = 'cam_low'
+        cam_name = "cam_low"
         return self.image_cb(cam_name, data)
 
     def image_cb_cam_left_wrist(self, data):
-        cam_name = 'cam_left_wrist'
+        cam_name = "cam_left_wrist"
         return self.image_cb(cam_name, data)
 
     def image_cb_cam_right_wrist(self, data):
-        cam_name = 'cam_right_wrist'
+        cam_name = "cam_right_wrist"
         return self.image_cb(cam_name, data)
 
     def get_images(self):
         image_dict = dict()
         for cam_name in self.camera_names:
-            while getattr(self, f'{cam_name}_timestamp') <= self.cam_last_timestamps[cam_name]:
+            while (
+                getattr(self, f"{cam_name}_timestamp")
+                <= self.cam_last_timestamps[cam_name]
+            ):
                 time.sleep(0.00001)
-            rgb_image = getattr(self, f'{cam_name}_rgb_image')
-            depth_image = getattr(self, f'{cam_name}_depth_image')
-            self.cam_last_timestamps[cam_name] = getattr(self, f'{cam_name}_timestamp')
+            rgb_image = getattr(self, f"{cam_name}_rgb_image")
+            depth_image = getattr(self, f"{cam_name}_depth_image")
+            self.cam_last_timestamps[cam_name] = getattr(self, f"{cam_name}_timestamp")
             image_dict[cam_name] = rgb_image
-            image_dict[f'{cam_name}_depth'] = depth_image
+            image_dict[f"{cam_name}_depth"] = depth_image
         return image_dict
 
     def print_diagnostics(self):
@@ -86,10 +114,12 @@ class ImageRecorder:
             l = np.array(l)
             diff = l[1:] - l[:-1]
             return np.mean(diff)
+
         for cam_name in self.camera_names:
-            image_freq = 1 / dt_helper(getattr(self, f'{cam_name}_timestamps'))
-            print(f'{cam_name} {image_freq=:.2f}')
+            image_freq = 1 / dt_helper(getattr(self, f"{cam_name}_timestamps"))
+            print(f"{cam_name} {image_freq=:.2f}")
         print()
+
 
 class Recorder:
     def __init__(self, side, init_node=True, is_debug=False):
@@ -107,10 +137,20 @@ class Recorder:
         self.is_debug = is_debug
 
         if init_node:
-            rospy.init_node('recorder', anonymous=True)
-        rospy.Subscriber(f"/puppet_{side}/joint_states", JointState, self.puppet_state_cb)
-        rospy.Subscriber(f"/puppet_{side}/commands/joint_group", JointGroupCommand, self.puppet_arm_commands_cb)
-        rospy.Subscriber(f"/puppet_{side}/commands/joint_single", JointSingleCommand, self.puppet_gripper_commands_cb)
+            rospy.init_node("recorder", anonymous=True)
+        rospy.Subscriber(
+            f"/puppet_{side}/joint_states", JointState, self.puppet_state_cb
+        )
+        rospy.Subscriber(
+            f"/puppet_{side}/commands/joint_group",
+            JointGroupCommand,
+            self.puppet_arm_commands_cb,
+        )
+        rospy.Subscriber(
+            f"/puppet_{side}/commands/joint_single",
+            JointSingleCommand,
+            self.puppet_gripper_commands_cb,
+        )
         if self.is_debug:
             self.joint_timestamps = deque(maxlen=50)
             self.arm_command_timestamps = deque(maxlen=50)
@@ -145,34 +185,47 @@ class Recorder:
         arm_command_freq = 1 / dt_helper(self.arm_command_timestamps)
         gripper_command_freq = 1 / dt_helper(self.gripper_command_timestamps)
 
-        print(f'{joint_freq=:.2f}\n{arm_command_freq=:.2f}\n{gripper_command_freq=:.2f}\n')
+        print(
+            f"{joint_freq=:.2f}\n{arm_command_freq=:.2f}\n{gripper_command_freq=:.2f}\n"
+        )
+
 
 def get_arm_joint_positions(bot):
     return bot.arm.core.joint_states.position[:6]
+
 
 def get_arm_gripper_positions(bot):
     joint_position = bot.gripper.core.joint_states.position[6]
     return joint_position
 
+
 def move_arms(bot_list, target_pose_list, move_time=1):
     num_steps = int(move_time / DT)
     curr_pose_list = [get_arm_joint_positions(bot) for bot in bot_list]
-    traj_list = [np.linspace(curr_pose, target_pose, num_steps) for curr_pose, target_pose in zip(curr_pose_list, target_pose_list)]
+    traj_list = [
+        np.linspace(curr_pose, target_pose, num_steps)
+        for curr_pose, target_pose in zip(curr_pose_list, target_pose_list)
+    ]
     for t in range(num_steps):
         for bot_id, bot in enumerate(bot_list):
             bot.arm.set_joint_positions(traj_list[bot_id][t], blocking=False)
         time.sleep(DT)
 
+
 def move_grippers(bot_list, target_pose_list, move_time):
     gripper_command = JointSingleCommand(name="gripper")
     num_steps = int(move_time / DT)
     curr_pose_list = [get_arm_gripper_positions(bot) for bot in bot_list]
-    traj_list = [np.linspace(curr_pose, target_pose, num_steps) for curr_pose, target_pose in zip(curr_pose_list, target_pose_list)]
+    traj_list = [
+        np.linspace(curr_pose, target_pose, num_steps)
+        for curr_pose, target_pose in zip(curr_pose_list, target_pose_list)
+    ]
     for t in range(num_steps):
         for bot_id, bot in enumerate(bot_list):
             gripper_command.cmd = traj_list[bot_id][t]
             bot.gripper.core.pub_single.publish(gripper_command)
         time.sleep(DT)
+
 
 def setup_puppet_bot(bot):
     bot.dxl.robot_reboot_motors("single", "gripper", True)
@@ -180,29 +233,37 @@ def setup_puppet_bot(bot):
     bot.dxl.robot_set_operating_modes("single", "gripper", "current_based_position")
     torque_on(bot)
 
+
 def setup_master_bot(bot):
     bot.dxl.robot_set_operating_modes("group", "arm", "pwm")
     bot.dxl.robot_set_operating_modes("single", "gripper", "current_based_position")
     torque_off(bot)
 
+
 def set_standard_pid_gains(bot):
-    bot.dxl.robot_set_motor_registers("group", "arm", 'Position_P_Gain', 800)
-    bot.dxl.robot_set_motor_registers("group", "arm", 'Position_I_Gain', 0)
+    bot.dxl.robot_set_motor_registers("group", "arm", "Position_P_Gain", 800)
+    bot.dxl.robot_set_motor_registers("group", "arm", "Position_I_Gain", 0)
+
 
 def set_low_pid_gains(bot):
-    bot.dxl.robot_set_motor_registers("group", "arm", 'Position_P_Gain', 100)
-    bot.dxl.robot_set_motor_registers("group", "arm", 'Position_I_Gain', 0)
+    bot.dxl.robot_set_motor_registers("group", "arm", "Position_P_Gain", 100)
+    bot.dxl.robot_set_motor_registers("group", "arm", "Position_I_Gain", 0)
+
 
 def torque_off(bot):
     bot.dxl.robot_torque_enable("group", "arm", False)
     bot.dxl.robot_torque_enable("single", "gripper", False)
 
+
 def torque_on(bot):
     bot.dxl.robot_torque_enable("group", "arm", True)
     bot.dxl.robot_torque_enable("single", "gripper", True)
 
+
 # for DAgger
-def sync_puppet_to_master(master_bot_left, master_bot_right, puppet_bot_left, puppet_bot_right):
+def sync_puppet_to_master(
+    master_bot_left, master_bot_right, puppet_bot_left, puppet_bot_right
+):
     print("\nSyncing!")
 
     # activate master arms
@@ -218,34 +279,54 @@ def sync_puppet_to_master(master_bot_left, master_bot_right, puppet_bot_left, pu
     puppet_right_gripper = get_arm_gripper_positions(puppet_bot_right)
 
     # move master arms to puppet positions
-    move_arms([master_bot_left, master_bot_right], [puppet_left_qpos, puppet_right_qpos], move_time=1)
+    move_arms(
+        [master_bot_left, master_bot_right],
+        [puppet_left_qpos, puppet_right_qpos],
+        move_time=1,
+    )
 
     # move master grippers to puppet positions
-    move_grippers([master_bot_left, master_bot_right], [puppet_left_gripper, puppet_right_gripper], move_time=1)
+    move_grippers(
+        [master_bot_left, master_bot_right],
+        [puppet_left_gripper, puppet_right_gripper],
+        move_time=1,
+    )
 
-def teleop(env, master_bot_left, master_bot_right, dataset_dir=None, ts=None, camera_names=None, image_list=None, command=None):
+
+def teleop(
+    env,
+    master_bot_left,
+    master_bot_right,
+    dataset_dir=None,
+    ts=None,
+    camera_names=None,
+    image_list=None,
+    command=None,
+):
     torque_off(master_bot_left)
     torque_off(master_bot_right)
-    print(f'\nTeleop started')
+    print(f"\nTeleop started")
 
     # teleop loop
     global option
     dataset_path, episode_idx = create_dataset_path(dataset_dir)
-    ts.observation['option'] = -1 # indicate the start
+    ts.observation["option"] = -1  # indicate the start
     timesteps = [ts]
     actions = []
 
     while True:
         action = get_action(master_bot_left, master_bot_right)
         ts = env.step(action)
-        ts.observation['option'] = option
+        ts.observation["option"] = option
         timesteps.append(ts)
         actions.append(action)
-        image_list.append(ts.observation['images'])
+        image_list.append(ts.observation["images"])
 
         # stop if the 3rd pedal is released
         if option == 0:
             print("\nReleased Pedal 3")
             break
 
-    return save_trajectory(dataset_path, timesteps, actions, camera_names, command, image_list)
+    return save_trajectory(
+        dataset_path, timesteps, actions, camera_names, command, image_list
+    )

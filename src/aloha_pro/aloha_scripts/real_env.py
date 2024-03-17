@@ -4,18 +4,30 @@ import collections
 import matplotlib.pyplot as plt
 import dm_env
 
-from constants import DT, START_ARM_POSE, MASTER_GRIPPER_JOINT_NORMALIZE_FN, PUPPET_GRIPPER_JOINT_UNNORMALIZE_FN
-from constants import PUPPET_GRIPPER_POSITION_NORMALIZE_FN, PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN
+from constants import (
+    DT,
+    START_ARM_POSE,
+    MASTER_GRIPPER_JOINT_NORMALIZE_FN,
+    PUPPET_GRIPPER_JOINT_UNNORMALIZE_FN,
+)
+from constants import (
+    PUPPET_GRIPPER_POSITION_NORMALIZE_FN,
+    PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN,
+)
 from constants import PUPPET_GRIPPER_JOINT_OPEN, PUPPET_GRIPPER_JOINT_CLOSE
-import sys; sys.path.append('/home/lucyshi/code/yay_robot/src/aloha_pro/aloha_scripts/') 
-sys.path.append('/home/huzheyuan/Desktop/yay_robot/src/aloha_pro/aloha_scripts/')
+import sys
+
+sys.path.append("/home/lucyshi/code/yay_robot/src/aloha_pro/aloha_scripts/")
+sys.path.append("/home/huzheyuan/Desktop/yay_robot/src/aloha_pro/aloha_scripts/")
 from robot_utils import Recorder, ImageRecorder
 from robot_utils import setup_master_bot, setup_puppet_bot, move_arms, move_grippers
 from interbotix_xs_modules.arm import InterbotixManipulatorXS
 from interbotix_xs_msgs.msg import JointSingleCommand
 
 import IPython
+
 e = IPython.embed
+
 
 class RealEnv:
     """
@@ -40,18 +52,28 @@ class RealEnv:
     """
 
     def __init__(self, init_node, setup_robots=True, only_right=False):
-        self.puppet_bot_left = InterbotixManipulatorXS(robot_model="vx300s", group_name="arm", gripper_name="gripper",
-                                                       robot_name=f'puppet_left', init_node=init_node)
-        self.puppet_bot_right = InterbotixManipulatorXS(robot_model="vx300s", group_name="arm", gripper_name="gripper",
-                                                        robot_name=f'puppet_right', init_node=False)
+        self.puppet_bot_left = InterbotixManipulatorXS(
+            robot_model="vx300s",
+            group_name="arm",
+            gripper_name="gripper",
+            robot_name=f"puppet_left",
+            init_node=init_node,
+        )
+        self.puppet_bot_right = InterbotixManipulatorXS(
+            robot_model="vx300s",
+            group_name="arm",
+            gripper_name="gripper",
+            robot_name=f"puppet_right",
+            init_node=False,
+        )
         if setup_robots:
             if only_right:
                 setup_puppet_bot(self.puppet_bot_right)
             else:
                 self.setup_robots()
 
-        self.recorder_left = Recorder('left', init_node=False)
-        self.recorder_right = Recorder('right', init_node=False)
+        self.recorder_left = Recorder("left", init_node=False)
+        self.recorder_right = Recorder("right", init_node=False)
         self.image_recorder = ImageRecorder(init_node=False)
         self.gripper_command = JointSingleCommand(name="gripper")
         self.only_right = only_right
@@ -65,9 +87,15 @@ class RealEnv:
         right_qpos_raw = self.recorder_right.qpos
         left_arm_qpos = left_qpos_raw[:6]
         right_arm_qpos = right_qpos_raw[:6]
-        left_gripper_qpos = [PUPPET_GRIPPER_POSITION_NORMALIZE_FN(left_qpos_raw[7])] # this is position not joint
-        right_gripper_qpos = [PUPPET_GRIPPER_POSITION_NORMALIZE_FN(right_qpos_raw[7])] # this is position not joint
-        return np.concatenate([left_arm_qpos, left_gripper_qpos, right_arm_qpos, right_gripper_qpos])
+        left_gripper_qpos = [
+            PUPPET_GRIPPER_POSITION_NORMALIZE_FN(left_qpos_raw[7])
+        ]  # this is position not joint
+        right_gripper_qpos = [
+            PUPPET_GRIPPER_POSITION_NORMALIZE_FN(right_qpos_raw[7])
+        ]  # this is position not joint
+        return np.concatenate(
+            [left_arm_qpos, left_gripper_qpos, right_arm_qpos, right_gripper_qpos]
+        )
 
     def get_qvel(self):
         left_qvel_raw = self.recorder_left.qvel
@@ -76,7 +104,9 @@ class RealEnv:
         right_arm_qvel = right_qvel_raw[:6]
         left_gripper_qvel = [PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN(left_qvel_raw[7])]
         right_gripper_qvel = [PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN(right_qvel_raw[7])]
-        return np.concatenate([left_arm_qvel, left_gripper_qvel, right_arm_qvel, right_gripper_qvel])
+        return np.concatenate(
+            [left_arm_qvel, left_gripper_qvel, right_arm_qvel, right_gripper_qvel]
+        )
 
     def get_effort(self):
         left_effort_raw = self.recorder_left.effort
@@ -88,12 +118,18 @@ class RealEnv:
     def get_images(self):
         return self.image_recorder.get_images()
 
-    def set_gripper_pose(self, left_gripper_desired_pos_normalized, right_gripper_desired_pos_normalized):
-        left_gripper_desired_joint = PUPPET_GRIPPER_JOINT_UNNORMALIZE_FN(left_gripper_desired_pos_normalized)
+    def set_gripper_pose(
+        self, left_gripper_desired_pos_normalized, right_gripper_desired_pos_normalized
+    ):
+        left_gripper_desired_joint = PUPPET_GRIPPER_JOINT_UNNORMALIZE_FN(
+            left_gripper_desired_pos_normalized
+        )
         self.gripper_command.cmd = left_gripper_desired_joint
         self.puppet_bot_left.gripper.core.pub_single.publish(self.gripper_command)
 
-        right_gripper_desired_joint = PUPPET_GRIPPER_JOINT_UNNORMALIZE_FN(right_gripper_desired_pos_normalized)
+        right_gripper_desired_joint = PUPPET_GRIPPER_JOINT_UNNORMALIZE_FN(
+            right_gripper_desired_pos_normalized
+        )
         self.gripper_command.cmd = right_gripper_desired_joint
         self.puppet_bot_right.gripper.core.pub_single.publish(self.gripper_command)
 
@@ -102,23 +138,39 @@ class RealEnv:
         if self.only_right:
             move_arms([self.puppet_bot_right], [reset_position], move_time=1)
         else:
-            move_arms([self.puppet_bot_left, self.puppet_bot_right], [reset_position, reset_position], move_time=1)
+            move_arms(
+                [self.puppet_bot_left, self.puppet_bot_right],
+                [reset_position, reset_position],
+                move_time=1,
+            )
 
     def _reset_gripper(self):
         """Set to position mode and do position resets: first open then close. Then change back to PWM mode"""
         if self.only_right:
-            move_grippers([self.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN], move_time=0.5)
-            move_grippers([self.puppet_bot_right], [PUPPET_GRIPPER_JOINT_CLOSE], move_time=1)
+            move_grippers(
+                [self.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN], move_time=0.5
+            )
+            move_grippers(
+                [self.puppet_bot_right], [PUPPET_GRIPPER_JOINT_CLOSE], move_time=1
+            )
         else:
-            move_grippers([self.puppet_bot_left, self.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=0.5)
-            move_grippers([self.puppet_bot_left, self.puppet_bot_right], [PUPPET_GRIPPER_JOINT_CLOSE] * 2, move_time=1)
+            move_grippers(
+                [self.puppet_bot_left, self.puppet_bot_right],
+                [PUPPET_GRIPPER_JOINT_OPEN] * 2,
+                move_time=0.5,
+            )
+            move_grippers(
+                [self.puppet_bot_left, self.puppet_bot_right],
+                [PUPPET_GRIPPER_JOINT_CLOSE] * 2,
+                move_time=1,
+            )
 
     def get_observation(self):
         obs = collections.OrderedDict()
-        obs['qpos'] = self.get_qpos()
-        obs['qvel'] = self.get_qvel()
-        obs['effort'] = self.get_effort()
-        obs['images'] = self.get_images()
+        obs["qpos"] = self.get_qpos()
+        obs["qvel"] = self.get_qvel()
+        obs["effort"] = self.get_effort()
+        obs["images"] = self.get_images()
         return obs
 
     def get_reward(self):
@@ -136,7 +188,8 @@ class RealEnv:
             step_type=dm_env.StepType.FIRST,
             reward=self.get_reward(),
             discount=None,
-            observation=self.get_observation())
+            observation=self.get_observation(),
+        )
 
     def step(self, action):
         state_len = int(len(action) / 2)
@@ -149,17 +202,22 @@ class RealEnv:
             step_type=dm_env.StepType.MID,
             reward=self.get_reward(),
             discount=None,
-            observation=self.get_observation())
+            observation=self.get_observation(),
+        )
 
 
 def get_action(master_bot_left, master_bot_right):
-    action = np.zeros(14) # 6 joint + 1 gripper, for two arms
+    action = np.zeros(14)  # 6 joint + 1 gripper, for two arms
     # Arm actions
     action[:6] = master_bot_left.dxl.joint_states.position[:6]
-    action[7:7+6] = master_bot_right.dxl.joint_states.position[:6]
+    action[7 : 7 + 6] = master_bot_right.dxl.joint_states.position[:6]
     # Gripper actions
-    action[6] = MASTER_GRIPPER_JOINT_NORMALIZE_FN(master_bot_left.dxl.joint_states.position[6])
-    action[7+6] = MASTER_GRIPPER_JOINT_NORMALIZE_FN(master_bot_right.dxl.joint_states.position[6])
+    action[6] = MASTER_GRIPPER_JOINT_NORMALIZE_FN(
+        master_bot_left.dxl.joint_states.position[6]
+    )
+    action[7 + 6] = MASTER_GRIPPER_JOINT_NORMALIZE_FN(
+        master_bot_right.dxl.joint_states.position[6]
+    )
 
     return action
 
@@ -181,13 +239,23 @@ def test_real_teleop():
     """
 
     onscreen_render = True
-    render_cam = 'cam_left_wrist'
+    render_cam = "cam_left_wrist"
 
     # source of data
-    master_bot_left = InterbotixManipulatorXS(robot_model="wx250s", group_name="arm", gripper_name="gripper",
-                                              robot_name=f'master_left', init_node=True)
-    master_bot_right = InterbotixManipulatorXS(robot_model="wx250s", group_name="arm", gripper_name="gripper",
-                                               robot_name=f'master_right', init_node=False)
+    master_bot_left = InterbotixManipulatorXS(
+        robot_model="wx250s",
+        group_name="arm",
+        gripper_name="gripper",
+        robot_name=f"master_left",
+        init_node=True,
+    )
+    master_bot_right = InterbotixManipulatorXS(
+        robot_model="wx250s",
+        group_name="arm",
+        gripper_name="gripper",
+        robot_name=f"master_right",
+        init_node=False,
+    )
     setup_master_bot(master_bot_left)
     setup_master_bot(master_bot_right)
 
@@ -198,7 +266,7 @@ def test_real_teleop():
     # setup visualization
     if onscreen_render:
         ax = plt.subplot()
-        plt_img = ax.imshow(ts.observation['images'][render_cam])
+        plt_img = ax.imshow(ts.observation["images"][render_cam])
         plt.ion()
 
     for t in range(1000):
@@ -207,12 +275,11 @@ def test_real_teleop():
         episode.append(ts)
 
         if onscreen_render:
-            plt_img.set_data(ts.observation['images'][render_cam])
+            plt_img.set_data(ts.observation["images"][render_cam])
             plt.pause(DT)
         else:
             time.sleep(DT)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_real_teleop()
-

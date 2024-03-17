@@ -1,14 +1,16 @@
 from calendar import c
 import sys
 import numpy as np
+
 # sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
-import pyrealsense2 as rs                 # Intel RealSense cross-platform open-source API
+import pyrealsense2 as rs  # Intel RealSense cross-platform open-source API
 import cv2
+
 # Setup:
 # ctx = rs.context()
 # devices = ctx.devices
 
-sns = ['242522072494', '127122270146', '128422270679']
+sns = ["242522072494", "127122270146", "128422270679"]
 pipes = [rs.pipeline() for _ in range(len(sns))]
 cfgs = [rs.config() for _ in range(len(sns))]
 
@@ -29,7 +31,7 @@ while True:
         color_frame = frameset.get_color_frame()
         frames.append(color_frame.get_data())
 
-    cv2.imshow('', np.concatenate(frames, axis=1))
+    cv2.imshow("", np.concatenate(frames, axis=1))
     cv2.waitKey(1)
 
 
@@ -43,7 +45,7 @@ while True:
 # # Skip 5 first frames to give the Auto-Exposure time to adjust
 # for x in range(30):
 #   pipe.wait_for_frames()
-  
+
 # # Store next frameset for later processing:
 
 # while True:

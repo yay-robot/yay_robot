@@ -18,9 +18,9 @@ import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import threading
 import sys
-sys.path.append('/home/lucyshi/code/yay_robot/src') # to import aloha
-sys.path.append('/iris/u/lucyshi/yay_robot/src') # for cluster
-sys.path.append('/home/huzheyuan/Desktop/yay_robot/src') # for zheyuan
+sys.path.append("/home/lucyshi/code/yay_robot/src")  # to import aloha
+sys.path.append("/iris/u/lucyshi/yay_robot/src")  # for cluster
+sys.path.append("/home/huzheyuan/Desktop/yay_robot/src")  # for zheyuan
 from tqdm import tqdm
 from PIL import Image, ImageDraw, ImageFont
 from sklearn.manifold import TSNE
@@ -42,7 +42,12 @@ def train(model, dataloader, optimizer, criterion, device):
         logits, temperature = model(images)
 
         # Convert ground truth command strings to indices using the pre-computed dictionary
-        commands_idx = [model.command_to_index[cmd.replace("the back", "the bag").replace("mmove", "move")] for cmd in commands]
+        commands_idx = [
+            model.command_to_index[
+                cmd.replace("the back", "the bag").replace("mmove", "move")
+            ]
+            for cmd in commands
+        ]
         commands_idx = torch.tensor(commands_idx, device=device)
 
         loss = criterion(logits, commands_idx)
@@ -50,10 +55,11 @@ def train(model, dataloader, optimizer, criterion, device):
         optimizer.step()
 
         total_loss += loss.item()
-        
+
         if args.log_wandb:
             wandb.log({"Train Loss": loss.item(), "Temperature": temperature.item()})
     return total_loss / len(dataloader)
+
 
 def evaluate(model, dataloader, criterion, device):
     model.eval()
@@ -66,7 +72,10 @@ def evaluate(model, dataloader, criterion, device):
             logits, temperature = model(images)
 
             # Convert ground truth command strings to indices using the pre-computed dictionary
-            commands_idx = [model.command_to_index[cmd.replace("the back", "the bag")] for cmd in commands]
+            commands_idx = [
+                model.command_to_index[cmd.replace("the back", "the bag")]
+                for cmd in commands
+            ]
             commands_idx = torch.tensor(commands_idx, device=device)
 
             loss = criterion(logits, commands_idx)
@@ -77,27 +86,28 @@ def evaluate(model, dataloader, criterion, device):
                 # wandb.log({"Eval Loss": loss.item()})
     return total_loss / len(dataloader)
 
+
 def test(model, dataloader, device, current_epoch):
     model.eval()
-    
+
     total_correct = 0
     total_predictions = 0
 
     # predicted_embeddings = []
     # gt_embeddings = []
-    
+
     with torch.no_grad():
         for idx, batch in enumerate(dataloader):
             images, command_embedding_gt, command_gt = batch
-            images = images.to(device)     
-            
+            images = images.to(device)
+
             logits, temperature = model(images)
             # Get nearest text for each prediction in the batch
             decoded_texts = model.decode_logits(logits, temperature)
 
             # predicted_embeddings.extend(predictions.cpu().numpy())
             # gt_embeddings.extend(command_embedding_gt.cpu().numpy())
-            
+
             for i, (gt, pred) in enumerate(zip(command_gt, decoded_texts)):
                 # Save incorrect prediction
                 # if pred != gt:
@@ -108,7 +118,7 @@ def test(model, dataloader, device, current_epoch):
                 # elif i < 5:
                 #     save_path = os.path.join(ckpt_dir, "predictions", f"epoch_{current_epoch}_correct_{idx}_{i}.jpg")
                 #     save_combined_image(images[i].squeeze(0), gt, pred, save_path)
-                
+
                 total_correct += int(pred == gt)
                 total_predictions += 1
                 print(f"Ground truth: {gt} \t Predicted text: {pred}")
@@ -130,7 +140,8 @@ def latest_checkpoint(ckpt_dir):
     Returns the latest checkpoint file from the given directory.
     """
     all_ckpts = [
-        f for f in os.listdir(ckpt_dir) 
+        f
+        for f in os.listdir(ckpt_dir)
         if f.startswith("epoch_") and f.endswith(".ckpt")
     ]
     epoch_numbers = [int(f.split("_")[1].split(".")[0]) for f in all_ckpts]
@@ -144,10 +155,10 @@ def latest_checkpoint(ckpt_dir):
 
 
 def load_candidate_texts(file_path):
-    with open(file_path, 'r') as f:
+    with open(file_path, "r") as f:
         lines = f.readlines()
         # Extract the instruction (text before the colon), strip whitespace, and then strip quotation marks
-        candidate_texts = [line.split(':')[0].strip().strip('\'"') for line in lines]
+        candidate_texts = [line.split(":")[0].strip().strip("'\"") for line in lines]
     return candidate_texts
 
 
@@ -156,48 +167,63 @@ def save_combined_image(image, gt_text, pred_text, save_path=None):
 
     # Extract first frame t=0 and concatenate across width
     combined_image = torch.cat([image[0, i] for i in range(image.shape[1])], dim=-1)
-    
+
     # Convert to PIL image
     combined_image_pil = transforms.ToPILImage()(combined_image)
-    
+
     # Create a blank canvas to add text
-    canvas = Image.new('RGB', (combined_image_pil.width, combined_image_pil.height + 100), 'black')
+    canvas = Image.new(
+        "RGB", (combined_image_pil.width, combined_image_pil.height + 100), "black"
+    )
     canvas.paste(combined_image_pil, (0, 100))
-    
+
     # Add GT and predicted text
     draw = ImageDraw.Draw(canvas)
-    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf", 30)
-    draw.text((10, 10), "GT: " + gt_text, font=font, fill='white')
-    draw.text((10, 50), "Pred: " + pred_text, font=font, fill='red')
-    
+    font = ImageFont.truetype(
+        "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf", 30
+    )
+    draw.text((10, 10), "GT: " + gt_text, font=font, fill="white")
+    draw.text((10, 50), "Pred: " + pred_text, font=font, fill="red")
+
     if save_path is not None:
         canvas.save(save_path)
     else:
         return canvas
 
+
 def tsne_visualize(predicted_embeddings, gt_embeddings, candidate_embeddings, epoch):
     # Convert lists to numpy arrays
     predicted_embeddings = np.array(predicted_embeddings)
     gt_embeddings = np.array(gt_embeddings)
-    
-    assert predicted_embeddings.shape == gt_embeddings.shape, "The number of predicted and ground truth embeddings do not match."
+
+    assert (
+        predicted_embeddings.shape == gt_embeddings.shape
+    ), "The number of predicted and ground truth embeddings do not match."
 
     # Stack embeddings and apply t-SNE
-    all_embeddings = np.vstack([predicted_embeddings, gt_embeddings, candidate_embeddings.cpu().numpy()])
+    all_embeddings = np.vstack(
+        [predicted_embeddings, gt_embeddings, candidate_embeddings.cpu().numpy()]
+    )
     tsne = TSNE(n_components=2, random_state=42)
     embeddings_2d = tsne.fit_transform(all_embeddings)
-    
+
     # Split the 2D embeddings back
-    predicted_2d = embeddings_2d[:len(predicted_embeddings)]
-    gt_2d = embeddings_2d[len(predicted_embeddings):len(predicted_embeddings) + len(gt_embeddings)]
-    candidate_2d = embeddings_2d[len(predicted_embeddings) + len(gt_embeddings):]
-    
+    predicted_2d = embeddings_2d[: len(predicted_embeddings)]
+    gt_2d = embeddings_2d[
+        len(predicted_embeddings) : len(predicted_embeddings) + len(gt_embeddings)
+    ]
+    candidate_2d = embeddings_2d[len(predicted_embeddings) + len(gt_embeddings) :]
+
     # Plot the results
     plt.figure(figsize=(10, 10))
-    plt.scatter(candidate_2d[:, 0], candidate_2d[:, 1], marker='o', color='g', label="Dataset")
-    plt.scatter(gt_2d[:, 0], gt_2d[:, 1], marker='o', color='b', label="Ground Truth")
-    plt.scatter(predicted_2d[:, 0], predicted_2d[:, 1], marker='o', color='r', label="Predicted")
-    
+    plt.scatter(
+        candidate_2d[:, 0], candidate_2d[:, 1], marker="o", color="g", label="Dataset"
+    )
+    plt.scatter(gt_2d[:, 0], gt_2d[:, 1], marker="o", color="b", label="Ground Truth")
+    plt.scatter(
+        predicted_2d[:, 0], predicted_2d[:, 1], marker="o", color="r", label="Predicted"
+    )
+
     plt.xlabel("t-SNE Dimension 1")
     plt.ylabel("t-SNE Dimension 2")
     plt.title(f"t-SNE Visualization of Embeddings (Epoch {epoch})")
@@ -206,21 +232,34 @@ def tsne_visualize(predicted_embeddings, gt_embeddings, candidate_embeddings, ep
     # Save with the epoch in the filename
     image_save_path = os.path.join(ckpt_dir, f"embeddings_tsne_epoch_{epoch}.png")
     plt.savefig(image_save_path)
-    
+
     # Log the image to wandb if logging is enabled
     if args.log_wandb:
-        wandb.log({"t-SNE Visualization": [wandb.Image(image_save_path, caption=f"Epoch {epoch}")]})
+        wandb.log(
+            {
+                "t-SNE Visualization": [
+                    wandb.Image(image_save_path, caption=f"Epoch {epoch}")
+                ]
+            }
+        )
+
 
 def load_candidate_texts_and_embeddings(dataset_dirs, device=torch.device("cuda")):
     candidate_texts = []
     candidate_embeddings = []
 
     for dataset_dir in dataset_dirs:
-        embeddings_path = os.path.join(dataset_dir, 'candidate_embeddings_distilbert.npy')
+        embeddings_path = os.path.join(
+            dataset_dir, "candidate_embeddings_distilbert.npy"
+        )
         # Load pre-computed embeddings
-        candidate_embedding = torch.tensor(np.load(embeddings_path).astype(np.float32)).to(device).squeeze()
+        candidate_embedding = (
+            torch.tensor(np.load(embeddings_path).astype(np.float32))
+            .to(device)
+            .squeeze()
+        )
         candidate_embeddings.append(candidate_embedding)
-        candidate_texts_path = os.path.join(dataset_dir, 'count.txt')
+        candidate_texts_path = os.path.join(dataset_dir, "count.txt")
         current_candidate_texts = load_candidate_texts(candidate_texts_path)
         candidate_texts.extend(current_candidate_texts)
     candidate_embeddings = torch.cat(candidate_embeddings, dim=0).to(device)
@@ -238,17 +277,27 @@ def load_candidate_texts_and_embeddings(dataset_dirs, device=torch.device("cuda"
 
         return filtered_texts, filtered_embeddings
 
-    candidate_texts, candidate_embeddings = remove_duplicates(candidate_texts, candidate_embeddings)
+    candidate_texts, candidate_embeddings = remove_duplicates(
+        candidate_texts, candidate_embeddings
+    )
     return candidate_texts, candidate_embeddings
+
 
 def build_instructor(dataset_dirs, history_len, device):
     # Load candidate texts and embeddings
-    candidate_texts, candidate_embeddings = load_candidate_texts_and_embeddings(dataset_dirs, device=device)
+    candidate_texts, candidate_embeddings = load_candidate_texts_and_embeddings(
+        dataset_dirs, device=device
+    )
     command_to_index = {command: index for index, command in enumerate(candidate_texts)}
 
     # Build model
-    model = Instructor(device=device, history_len=history_len, candidate_embeddings=candidate_embeddings, 
-                       candidate_texts=candidate_texts, command_to_index=command_to_index).to(device)
+    model = Instructor(
+        device=device,
+        history_len=history_len,
+        candidate_embeddings=candidate_embeddings,
+        candidate_texts=candidate_texts,
+        command_to_index=command_to_index,
+    ).to(device)
     return model
 
 
@@ -284,16 +333,17 @@ if __name__ == "__main__":
 
     # get task parameters
     from aloha_pro.aloha_scripts.constants import TASK_CONFIGS
+
     dataset_dirs = []
     num_episodes_list = []
     max_episode_len = 0
 
     for task in args.task_name:
         task_config = TASK_CONFIGS[task]
-        dataset_dirs.append(task_config['dataset_dir'])
-        num_episodes_list.append(task_config['num_episodes'])
-        max_episode_len = max(max_episode_len, task_config['episode_len'])
-        camera_names = task_config['camera_names']
+        dataset_dirs.append(task_config["dataset_dir"])
+        num_episodes_list.append(task_config["num_episodes"])
+        max_episode_len = max(max_episode_len, task_config["episode_len"])
+        camera_names = task_config["camera_names"]
     ckpt_dir = args.ckpt_dir
     dagger_ratio = args.dagger_ratio
 
@@ -301,7 +351,7 @@ if __name__ == "__main__":
     train_dataloader, val_dataloader, test_dataloader = load_merged_data(
         dataset_dirs=dataset_dirs,
         num_episodes_list=num_episodes_list,
-        camera_names=camera_names,  
+        camera_names=camera_names,
         batch_size_train=args.batch_size,
         batch_size_val=args.batch_size,
         history_len=args.history_len,
@@ -309,7 +359,7 @@ if __name__ == "__main__":
         history_skip_frame=args.history_skip_frame,
         random_crop=args.random_crop,
         dagger_ratio=dagger_ratio,
-    ) 
+    )
 
     model = build_instructor(dataset_dirs, args.history_len, device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
@@ -318,18 +368,26 @@ if __name__ == "__main__":
     # WandB initialization
     if args.log_wandb:
         run_name = "instructor." + ckpt_dir.split("/")[-1] + f".{args.seed}"
-        wandb_run_id_path = os.path.join(ckpt_dir, 'wandb_run_id.txt')
+        wandb_run_id_path = os.path.join(ckpt_dir, "wandb_run_id.txt")
         # check if it exists
         if os.path.exists(wandb_run_id_path):
-            with open(wandb_run_id_path, 'r') as f:
+            with open(wandb_run_id_path, "r") as f:
                 saved_run_id = f.read().strip()
-            wandb.init(project="yay-robot", entity="lucys", name=run_name, resume=saved_run_id)
+            wandb.init(
+                project="yay-robot", entity="lucys", name=run_name, resume=saved_run_id
+            )
         else:
-            wandb.init(project="yay-robot", entity="lucys", name=run_name, config=args, resume='allow')  
+            wandb.init(
+                project="yay-robot",
+                entity="lucys",
+                name=run_name,
+                config=args,
+                resume="allow",
+            )
             # Ensure the directory exists before trying to open the file
             os.makedirs(os.path.dirname(wandb_run_id_path), exist_ok=True)
-            with open(wandb_run_id_path, 'w') as f:
-                f.write(wandb.run.id)  
+            with open(wandb_run_id_path, "w") as f:
+                f.write(wandb.run.id)
 
     if not os.path.isdir(ckpt_dir):
         os.makedirs(ckpt_dir)
@@ -340,7 +398,7 @@ if __name__ == "__main__":
         if latest_ckpt:
             print(f"Loading checkpoint: {latest_ckpt}")
             model.load_state_dict(torch.load(latest_ckpt, map_location=device))
-        else: 
+        else:
             print("No checkpoint found.")
             latest_idx = 0
 

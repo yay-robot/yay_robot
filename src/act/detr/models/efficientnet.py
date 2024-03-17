@@ -16,10 +16,26 @@ from torchvision.ops import StochasticDepth
 from torchvision.ops.misc import Conv2dNormActivation, SqueezeExcitation
 from torchvision.transforms._presets import ImageClassification, InterpolationMode
 from torchvision.utils import _log_api_usage_once
-from torchvision.models import EfficientNet_B0_Weights, EfficientNet_B1_Weights, EfficientNet_B2_Weights, EfficientNet_B3_Weights, EfficientNet_B4_Weights, EfficientNet_B5_Weights, EfficientNet_B6_Weights, EfficientNet_B7_Weights, EfficientNet_V2_S_Weights, EfficientNet_V2_M_Weights, EfficientNet_V2_L_Weights
+from torchvision.models import (
+    EfficientNet_B0_Weights,
+    EfficientNet_B1_Weights,
+    EfficientNet_B2_Weights,
+    EfficientNet_B3_Weights,
+    EfficientNet_B4_Weights,
+    EfficientNet_B5_Weights,
+    EfficientNet_B6_Weights,
+    EfficientNet_B7_Weights,
+    EfficientNet_V2_S_Weights,
+    EfficientNet_V2_M_Weights,
+    EfficientNet_V2_L_Weights,
+)
 from torchvision.models._api import register_model, Weights, WeightsEnum
 from torchvision.models._meta import _IMAGENET_CATEGORIES
-from torchvision.models._utils import _make_divisible, _ovewrite_named_param, handle_legacy_interface
+from torchvision.models._utils import (
+    _make_divisible,
+    _ovewrite_named_param,
+    handle_legacy_interface,
+)
 
 
 class FiLMBlock(nn.Module):
@@ -45,9 +61,12 @@ class FiLMBlock(nn.Module):
         # On the other hand, the latter formulation makes the transformation close to identity.
         # Therefore, the original paper actually uses the latter.
         # See Section 7.2 in the FiLM paper for further explanations: https://arxiv.org/pdf/1709.07871.pdf
-        x = x * (1 + gamma.view(gamma.shape[0], gamma.shape[1], 1, 1)) + beta.view(beta.shape[0], beta.shape[1], 1, 1)
+        x = x * (1 + gamma.view(gamma.shape[0], gamma.shape[1], 1, 1)) + beta.view(
+            beta.shape[0], beta.shape[1], 1, 1
+        )
         return x
-    
+
+
 __all__ = [
     "EfficientNet",
     "EfficientNet_B0_Weights",
@@ -86,7 +105,9 @@ class _MBConvConfig:
     block: Callable[..., nn.Module]
 
     @staticmethod
-    def adjust_channels(channels: int, width_mult: float, min_value: Optional[int] = None) -> int:
+    def adjust_channels(
+        channels: int, width_mult: float, min_value: Optional[int] = None
+    ) -> int:
         return _make_divisible(channels * width_mult, 8, min_value)
 
 
@@ -109,7 +130,15 @@ class MBConvConfig(_MBConvConfig):
         num_layers = self.adjust_depth(num_layers, depth_mult)
         if block is None:
             block = MBConv
-        super().__init__(expand_ratio, kernel, stride, input_channels, out_channels, num_layers, block)
+        super().__init__(
+            expand_ratio,
+            kernel,
+            stride,
+            input_channels,
+            out_channels,
+            num_layers,
+            block,
+        )
 
     @staticmethod
     def adjust_depth(num_layers: int, depth_mult: float):
@@ -130,7 +159,15 @@ class FusedMBConvConfig(_MBConvConfig):
     ) -> None:
         if block is None:
             block = FusedMBConv
-        super().__init__(expand_ratio, kernel, stride, input_channels, out_channels, num_layers, block)
+        super().__init__(
+            expand_ratio,
+            kernel,
+            stride,
+            input_channels,
+            out_channels,
+            num_layers,
+            block,
+        )
 
 
 class MBConv(nn.Module):
@@ -148,7 +185,9 @@ class MBConv(nn.Module):
         if not (1 <= cnf.stride <= 2):
             raise ValueError("illegal stride value")
 
-        self.use_res_connect = cnf.stride == 1 and cnf.input_channels == cnf.out_channels
+        self.use_res_connect = (
+            cnf.stride == 1 and cnf.input_channels == cnf.out_channels
+        )
 
         layers: List[nn.Module] = []
         activation_layer = nn.SiLU
@@ -181,12 +220,22 @@ class MBConv(nn.Module):
 
         # squeeze and excitation
         squeeze_channels = max(1, cnf.input_channels // 4)
-        layers.append(se_layer(expanded_channels, squeeze_channels, activation=partial(nn.SiLU, inplace=True)))
+        layers.append(
+            se_layer(
+                expanded_channels,
+                squeeze_channels,
+                activation=partial(nn.SiLU, inplace=True),
+            )
+        )
 
         # project
         layers.append(
             Conv2dNormActivation(
-                expanded_channels, cnf.out_channels, kernel_size=1, norm_layer=norm_layer, activation_layer=None
+                expanded_channels,
+                cnf.out_channels,
+                kernel_size=1,
+                norm_layer=norm_layer,
+                activation_layer=None,
             )
         )
 
@@ -196,7 +245,9 @@ class MBConv(nn.Module):
 
         self.use_film = use_film
         if self.use_film:
-            self.film = FiLMBlock(language_embed_size=language_embed_size, num_channels=self.out_channels)
+            self.film = FiLMBlock(
+                language_embed_size=language_embed_size, num_channels=self.out_channels
+            )
 
     def forward(self, input: Tensor, language_embed: Tensor) -> Tensor:
         result = self.block(input)
@@ -222,7 +273,9 @@ class FusedMBConv(nn.Module):
         if not (1 <= cnf.stride <= 2):
             raise ValueError("illegal stride value")
 
-        self.use_res_connect = cnf.stride == 1 and cnf.input_channels == cnf.out_channels
+        self.use_res_connect = (
+            cnf.stride == 1 and cnf.input_channels == cnf.out_channels
+        )
 
         layers: List[nn.Module] = []
         activation_layer = nn.SiLU
@@ -244,7 +297,11 @@ class FusedMBConv(nn.Module):
             # project
             layers.append(
                 Conv2dNormActivation(
-                    expanded_channels, cnf.out_channels, kernel_size=1, norm_layer=norm_layer, activation_layer=None
+                    expanded_channels,
+                    cnf.out_channels,
+                    kernel_size=1,
+                    norm_layer=norm_layer,
+                    activation_layer=None,
                 )
             )
         else:
@@ -265,7 +322,9 @@ class FusedMBConv(nn.Module):
 
         self.use_film = use_film
         if self.use_film:
-            self.film = FiLMBlock(language_embed_size=language_embed_size, num_channels=self.out_channels)
+            self.film = FiLMBlock(
+                language_embed_size=language_embed_size, num_channels=self.out_channels
+            )
 
     def forward(self, input: Tensor) -> Tensor:
         result = self.block(input)
@@ -287,7 +346,7 @@ class EfficientNet(nn.Module):
         norm_layer: Optional[Callable[..., nn.Module]] = None,
         last_channel: Optional[int] = None,
         use_film: bool = True,
-        language_embed_size: int = 768, # 512 / 768
+        language_embed_size: int = 768,  # 512 / 768
     ) -> None:
         """
         EfficientNet V1 and V2 main class
@@ -311,7 +370,9 @@ class EfficientNet(nn.Module):
             isinstance(inverted_residual_setting, Sequence)
             and all([isinstance(s, _MBConvConfig) for s in inverted_residual_setting])
         ):
-            raise TypeError("The inverted_residual_setting should be List[MBConvConfig]")
+            raise TypeError(
+                "The inverted_residual_setting should be List[MBConvConfig]"
+            )
 
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
@@ -326,7 +387,12 @@ class EfficientNet(nn.Module):
         #     )
         # )
         self.first_layer = Conv2dNormActivation(
-            3, firstconv_output_channels, kernel_size=3, stride=2, norm_layer=norm_layer, activation_layer=nn.SiLU
+            3,
+            firstconv_output_channels,
+            kernel_size=3,
+            stride=2,
+            norm_layer=norm_layer,
+            activation_layer=nn.SiLU,
         )
 
         # building inverted residual blocks
@@ -345,9 +411,15 @@ class EfficientNet(nn.Module):
                     block_cnf.stride = 1
 
                 # adjust stochastic depth probability based on the depth of the stage block
-                sd_prob = stochastic_depth_prob * float(stage_block_id) / total_stage_blocks
+                sd_prob = (
+                    stochastic_depth_prob * float(stage_block_id) / total_stage_blocks
+                )
 
-                stage.append(block_cnf.block(block_cnf, sd_prob, norm_layer, use_film, language_embed_size))
+                stage.append(
+                    block_cnf.block(
+                        block_cnf, sd_prob, norm_layer, use_film, language_embed_size
+                    )
+                )
                 stage_block_id += 1
 
             # layers.append(nn.Sequential(*stage))
@@ -355,7 +427,9 @@ class EfficientNet(nn.Module):
 
         # building last several layers
         lastconv_input_channels = inverted_residual_setting[-1].out_channels
-        lastconv_output_channels = last_channel if last_channel is not None else 4 * lastconv_input_channels
+        lastconv_output_channels = (
+            last_channel if last_channel is not None else 4 * lastconv_input_channels
+        )
         # layers.append(
         #     Conv2dNormActivation(
         #         lastconv_input_channels,
@@ -401,7 +475,7 @@ class EfficientNet(nn.Module):
                 nn.init.zeros_(m.scale.weight)
                 nn.init.zeros_(m.scale.bias)
 
-    def _forward_impl(self, x: Tensor, language_embed: Tensor) -> Tensor:            
+    def _forward_impl(self, x: Tensor, language_embed: Tensor) -> Tensor:
         # x = self.features(x)
         x = self.first_layer(x)
         for stage in self.inverted_residual_block_stages:
@@ -432,7 +506,13 @@ def _efficientnet(
     if weights is not None:
         _ovewrite_named_param(kwargs, "num_classes", len(weights.meta["categories"]))
 
-    model = EfficientNet(inverted_residual_setting, dropout, last_channel=last_channel, use_film=use_film, **kwargs)
+    model = EfficientNet(
+        inverted_residual_setting,
+        dropout,
+        last_channel=last_channel,
+        use_film=use_film,
+        **kwargs,
+    )
 
     if weights is not None:
         weights_dict = weights.get_state_dict(progress=True)
@@ -474,36 +554,45 @@ def _efficientnet(
         # Then, we map features.X.Y.____ to last_layer.Y.____ for X == endpoint.
         # Lastly, we leave the classifier parameters as is.
         weights_dict_keys = list(weights_dict.keys())
-        endpoint = int(weights_dict_keys[-3].split('.')[1]) # e.g. 8
+        endpoint = int(weights_dict_keys[-3].split(".")[1])  # e.g. 8
         old_to_new_key_mapping = OrderedDict()
-        film_weights_in_weights_dict = 'inverted_residual_block_stages.0.0.film.scale.weight' in weights_dict_keys
+        film_weights_in_weights_dict = (
+            "inverted_residual_block_stages.0.0.film.scale.weight" in weights_dict_keys
+        )
         if film_weights_in_weights_dict:
             # If FiLM weights are already included the weights, this means that the pretrained weights came from us (i.e., they're not provided by PyTorch).
             # In this case, we can load the weights as is.
             pass
         else:
             for k, v in weights_dict.items():
-                if 'features.0' in k:
-                    new_key = 'first_layer' + k.split('features.0')[1] # hard-coded mapping for the first layer
-                elif 'features.' in k:
-                    features_id = int(k.split('.')[1])
+                if "features.0" in k:
+                    new_key = (
+                        "first_layer" + k.split("features.0")[1]
+                    )  # hard-coded mapping for the first layer
+                elif "features." in k:
+                    features_id = int(k.split(".")[1])
                     if features_id < endpoint:
-                        new_key = f'inverted_residual_block_stages.{features_id - 1}' + k.split(f'features.{features_id}')[1] # mapping for middle layers
+                        new_key = (
+                            f"inverted_residual_block_stages.{features_id - 1}"
+                            + k.split(f"features.{features_id}")[1]
+                        )  # mapping for middle layers
                     elif features_id == endpoint:
-                        new_key = 'last_layer' + k.split(f'features.{endpoint}')[1] # hard-coded mapping for the last layer
+                        new_key = (
+                            "last_layer" + k.split(f"features.{endpoint}")[1]
+                        )  # hard-coded mapping for the last layer
                     else:
-                        raise ValueError(f'This branch should never be reached.')
-                elif 'classifier' in k:
+                        raise ValueError(f"This branch should never be reached.")
+                elif "classifier" in k:
                     new_key = k
                 else:
-                    raise ValueError(f'This branch should never be reached.')
+                    raise ValueError(f"This branch should never be reached.")
                 old_to_new_key_mapping[k] = new_key
             for old_key, new_key in old_to_new_key_mapping.items():
                 weights_dict[new_key] = weights_dict.pop(old_key)
             # load_state_dict() will complain if the FiLM weights are not included in the weights dict.
             # Therefore, we can just copy over the current (freshly initialized) FiLM parameters into the weights dict before loading it.
             for name, param in model.named_parameters():
-                if 'film' in name:
+                if "film" in name:
                     weights_dict[name] = param
         model.load_state_dict(weights_dict)
     return model
@@ -515,7 +604,11 @@ def _efficientnet_conf(
 ) -> Tuple[Sequence[Union[MBConvConfig, FusedMBConvConfig]], Optional[int]]:
     inverted_residual_setting: Sequence[Union[MBConvConfig, FusedMBConvConfig]]
     if arch.startswith("efficientnet_b"):
-        bneck_conf = partial(MBConvConfig, width_mult=kwargs.pop("width_mult"), depth_mult=kwargs.pop("depth_mult"))
+        bneck_conf = partial(
+            MBConvConfig,
+            width_mult=kwargs.pop("width_mult"),
+            depth_mult=kwargs.pop("depth_mult"),
+        )
         inverted_residual_setting = [
             bneck_conf(1, 3, 1, 32, 16, 1),
             bneck_conf(6, 3, 2, 16, 24, 2),
@@ -586,7 +679,11 @@ _COMMON_META_V2 = {
 @register_model()
 @handle_legacy_interface(weights=("pretrained", EfficientNet_B0_Weights.IMAGENET1K_V1))
 def film_efficientnet_b0(
-    *, weights: Optional[EfficientNet_B0_Weights] = None, progress: bool = True, use_film: bool = True, **kwargs: Any
+    *,
+    weights: Optional[EfficientNet_B0_Weights] = None,
+    progress: bool = True,
+    use_film: bool = True,
+    **kwargs: Any,
 ) -> EfficientNet:
     """EfficientNet B0 model architecture from the `EfficientNet: Rethinking Model Scaling for Convolutional
     Neural Networks <https://arxiv.org/abs/1905.11946>`_ paper.
@@ -609,16 +706,28 @@ def film_efficientnet_b0(
     """
     weights = EfficientNet_B0_Weights.verify(weights)
 
-    inverted_residual_setting, last_channel = _efficientnet_conf("efficientnet_b0", width_mult=1.0, depth_mult=1.0)
+    inverted_residual_setting, last_channel = _efficientnet_conf(
+        "efficientnet_b0", width_mult=1.0, depth_mult=1.0
+    )
     return _efficientnet(
-        inverted_residual_setting, kwargs.pop("dropout", 0.2), last_channel, weights, progress, use_film, **kwargs
+        inverted_residual_setting,
+        kwargs.pop("dropout", 0.2),
+        last_channel,
+        weights,
+        progress,
+        use_film,
+        **kwargs,
     )
 
 
 @register_model()
 @handle_legacy_interface(weights=("pretrained", EfficientNet_B1_Weights.IMAGENET1K_V1))
 def film_efficientnet_b1(
-    *, weights: Optional[EfficientNet_B1_Weights] = None, progress: bool = True, use_film: bool = True, **kwargs: Any
+    *,
+    weights: Optional[EfficientNet_B1_Weights] = None,
+    progress: bool = True,
+    use_film: bool = True,
+    **kwargs: Any,
 ) -> EfficientNet:
     """EfficientNet B1 model architecture from the `EfficientNet: Rethinking Model Scaling for Convolutional
     Neural Networks <https://arxiv.org/abs/1905.11946>`_ paper.
@@ -641,16 +750,28 @@ def film_efficientnet_b1(
     """
     weights = EfficientNet_B1_Weights.verify(weights)
 
-    inverted_residual_setting, last_channel = _efficientnet_conf("efficientnet_b1", width_mult=1.0, depth_mult=1.1)
+    inverted_residual_setting, last_channel = _efficientnet_conf(
+        "efficientnet_b1", width_mult=1.0, depth_mult=1.1
+    )
     return _efficientnet(
-        inverted_residual_setting, kwargs.pop("dropout", 0.2), last_channel, weights, progress, use_film, **kwargs
+        inverted_residual_setting,
+        kwargs.pop("dropout", 0.2),
+        last_channel,
+        weights,
+        progress,
+        use_film,
+        **kwargs,
     )
 
 
 @register_model()
 @handle_legacy_interface(weights=("pretrained", EfficientNet_B2_Weights.IMAGENET1K_V1))
 def film_efficientnet_b2(
-    *, weights: Optional[EfficientNet_B2_Weights] = None, progress: bool = True, use_film: bool = True, **kwargs: Any
+    *,
+    weights: Optional[EfficientNet_B2_Weights] = None,
+    progress: bool = True,
+    use_film: bool = True,
+    **kwargs: Any,
 ) -> EfficientNet:
     """EfficientNet B2 model architecture from the `EfficientNet: Rethinking Model Scaling for Convolutional
     Neural Networks <https://arxiv.org/abs/1905.11946>`_ paper.
@@ -673,16 +794,28 @@ def film_efficientnet_b2(
     """
     weights = EfficientNet_B2_Weights.verify(weights)
 
-    inverted_residual_setting, last_channel = _efficientnet_conf("efficientnet_b2", width_mult=1.1, depth_mult=1.2)
+    inverted_residual_setting, last_channel = _efficientnet_conf(
+        "efficientnet_b2", width_mult=1.1, depth_mult=1.2
+    )
     return _efficientnet(
-        inverted_residual_setting, kwargs.pop("dropout", 0.3), last_channel, weights, progress, use_film, **kwargs
+        inverted_residual_setting,
+        kwargs.pop("dropout", 0.3),
+        last_channel,
+        weights,
+        progress,
+        use_film,
+        **kwargs,
     )
 
 
 @register_model()
 @handle_legacy_interface(weights=("pretrained", EfficientNet_B3_Weights.IMAGENET1K_V1))
 def film_efficientnet_b3(
-    *, weights: Optional[EfficientNet_B3_Weights] = None, progress: bool = True, use_film: bool = True, **kwargs: Any
+    *,
+    weights: Optional[EfficientNet_B3_Weights] = None,
+    progress: bool = True,
+    use_film: bool = True,
+    **kwargs: Any,
 ) -> EfficientNet:
     """EfficientNet B3 model architecture from the `EfficientNet: Rethinking Model Scaling for Convolutional
     Neural Networks <https://arxiv.org/abs/1905.11946>`_ paper.
@@ -705,7 +838,9 @@ def film_efficientnet_b3(
     """
     weights = EfficientNet_B3_Weights.verify(weights)
 
-    inverted_residual_setting, last_channel = _efficientnet_conf("efficientnet_b3", width_mult=1.2, depth_mult=1.4)
+    inverted_residual_setting, last_channel = _efficientnet_conf(
+        "efficientnet_b3", width_mult=1.2, depth_mult=1.4
+    )
     return _efficientnet(
         inverted_residual_setting,
         kwargs.pop("dropout", 0.3),
@@ -720,7 +855,11 @@ def film_efficientnet_b3(
 @register_model()
 @handle_legacy_interface(weights=("pretrained", EfficientNet_B4_Weights.IMAGENET1K_V1))
 def film_efficientnet_b4(
-    *, weights: Optional[EfficientNet_B4_Weights] = None, progress: bool = True, use_film: bool = True, **kwargs: Any
+    *,
+    weights: Optional[EfficientNet_B4_Weights] = None,
+    progress: bool = True,
+    use_film: bool = True,
+    **kwargs: Any,
 ) -> EfficientNet:
     """EfficientNet B4 model architecture from the `EfficientNet: Rethinking Model Scaling for Convolutional
     Neural Networks <https://arxiv.org/abs/1905.11946>`_ paper.
@@ -743,7 +882,9 @@ def film_efficientnet_b4(
     """
     weights = EfficientNet_B4_Weights.verify(weights)
 
-    inverted_residual_setting, last_channel = _efficientnet_conf("efficientnet_b4", width_mult=1.4, depth_mult=1.8)
+    inverted_residual_setting, last_channel = _efficientnet_conf(
+        "efficientnet_b4", width_mult=1.4, depth_mult=1.8
+    )
     return _efficientnet(
         inverted_residual_setting,
         kwargs.pop("dropout", 0.4),
@@ -758,7 +899,11 @@ def film_efficientnet_b4(
 @register_model()
 @handle_legacy_interface(weights=("pretrained", EfficientNet_B5_Weights.IMAGENET1K_V1))
 def film_efficientnet_b5(
-    *, weights: Optional[EfficientNet_B5_Weights] = None, progress: bool = True, use_film: bool = True, **kwargs: Any
+    *,
+    weights: Optional[EfficientNet_B5_Weights] = None,
+    progress: bool = True,
+    use_film: bool = True,
+    **kwargs: Any,
 ) -> EfficientNet:
     """EfficientNet B5 model architecture from the `EfficientNet: Rethinking Model Scaling for Convolutional
     Neural Networks <https://arxiv.org/abs/1905.11946>`_ paper.
@@ -781,7 +926,9 @@ def film_efficientnet_b5(
     """
     weights = EfficientNet_B5_Weights.verify(weights)
 
-    inverted_residual_setting, last_channel = _efficientnet_conf("efficientnet_b5", width_mult=1.6, depth_mult=2.2)
+    inverted_residual_setting, last_channel = _efficientnet_conf(
+        "efficientnet_b5", width_mult=1.6, depth_mult=2.2
+    )
     return _efficientnet(
         inverted_residual_setting,
         kwargs.pop("dropout", 0.4),
@@ -797,7 +944,11 @@ def film_efficientnet_b5(
 @register_model()
 @handle_legacy_interface(weights=("pretrained", EfficientNet_B6_Weights.IMAGENET1K_V1))
 def film_efficientnet_b6(
-    *, weights: Optional[EfficientNet_B6_Weights] = None, progress: bool = True, use_film: bool = True, **kwargs: Any
+    *,
+    weights: Optional[EfficientNet_B6_Weights] = None,
+    progress: bool = True,
+    use_film: bool = True,
+    **kwargs: Any,
 ) -> EfficientNet:
     """EfficientNet B6 model architecture from the `EfficientNet: Rethinking Model Scaling for Convolutional
     Neural Networks <https://arxiv.org/abs/1905.11946>`_ paper.
@@ -820,7 +971,9 @@ def film_efficientnet_b6(
     """
     weights = EfficientNet_B6_Weights.verify(weights)
 
-    inverted_residual_setting, last_channel = _efficientnet_conf("efficientnet_b6", width_mult=1.8, depth_mult=2.6)
+    inverted_residual_setting, last_channel = _efficientnet_conf(
+        "efficientnet_b6", width_mult=1.8, depth_mult=2.6
+    )
     return _efficientnet(
         inverted_residual_setting,
         kwargs.pop("dropout", 0.5),
@@ -836,7 +989,11 @@ def film_efficientnet_b6(
 @register_model()
 @handle_legacy_interface(weights=("pretrained", EfficientNet_B7_Weights.IMAGENET1K_V1))
 def film_efficientnet_b7(
-    *, weights: Optional[EfficientNet_B7_Weights] = None, progress: bool = True, use_film: bool = True, **kwargs: Any
+    *,
+    weights: Optional[EfficientNet_B7_Weights] = None,
+    progress: bool = True,
+    use_film: bool = True,
+    **kwargs: Any,
 ) -> EfficientNet:
     """EfficientNet B7 model architecture from the `EfficientNet: Rethinking Model Scaling for Convolutional
     Neural Networks <https://arxiv.org/abs/1905.11946>`_ paper.
@@ -859,7 +1016,9 @@ def film_efficientnet_b7(
     """
     weights = EfficientNet_B7_Weights.verify(weights)
 
-    inverted_residual_setting, last_channel = _efficientnet_conf("efficientnet_b7", width_mult=2.0, depth_mult=3.1)
+    inverted_residual_setting, last_channel = _efficientnet_conf(
+        "efficientnet_b7", width_mult=2.0, depth_mult=3.1
+    )
     return _efficientnet(
         inverted_residual_setting,
         kwargs.pop("dropout", 0.5),
@@ -873,9 +1032,15 @@ def film_efficientnet_b7(
 
 
 @register_model()
-@handle_legacy_interface(weights=("pretrained", EfficientNet_V2_S_Weights.IMAGENET1K_V1))
+@handle_legacy_interface(
+    weights=("pretrained", EfficientNet_V2_S_Weights.IMAGENET1K_V1)
+)
 def film_efficientnet_v2_s(
-    *, weights: Optional[EfficientNet_V2_S_Weights] = None, progress: bool = True, use_film: bool = True, **kwargs: Any
+    *,
+    weights: Optional[EfficientNet_V2_S_Weights] = None,
+    progress: bool = True,
+    use_film: bool = True,
+    **kwargs: Any,
 ) -> EfficientNet:
     """
     Constructs an EfficientNetV2-S architecture from
@@ -913,9 +1078,15 @@ def film_efficientnet_v2_s(
 
 
 @register_model()
-@handle_legacy_interface(weights=("pretrained", EfficientNet_V2_M_Weights.IMAGENET1K_V1))
+@handle_legacy_interface(
+    weights=("pretrained", EfficientNet_V2_M_Weights.IMAGENET1K_V1)
+)
 def film_efficientnet_v2_m(
-    *, weights: Optional[EfficientNet_V2_M_Weights] = None, progress: bool = True, use_film: bool = True, **kwargs: Any
+    *,
+    weights: Optional[EfficientNet_V2_M_Weights] = None,
+    progress: bool = True,
+    use_film: bool = True,
+    **kwargs: Any,
 ) -> EfficientNet:
     """
     Constructs an EfficientNetV2-M architecture from
@@ -953,9 +1124,15 @@ def film_efficientnet_v2_m(
 
 
 @register_model()
-@handle_legacy_interface(weights=("pretrained", EfficientNet_V2_L_Weights.IMAGENET1K_V1))
+@handle_legacy_interface(
+    weights=("pretrained", EfficientNet_V2_L_Weights.IMAGENET1K_V1)
+)
 def film_efficientnet_v2_l(
-    *, weights: Optional[EfficientNet_V2_L_Weights] = None, progress: bool = True, use_film: bool = True, **kwargs: Any
+    *,
+    weights: Optional[EfficientNet_V2_L_Weights] = None,
+    progress: bool = True,
+    use_film: bool = True,
+    **kwargs: Any,
 ) -> EfficientNet:
     """
     Constructs an EfficientNetV2-L architecture from
