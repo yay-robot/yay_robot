@@ -374,12 +374,12 @@ if __name__ == "__main__":
             with open(wandb_run_id_path, "r") as f:
                 saved_run_id = f.read().strip()
             wandb.init(
-                project="yay-robot", entity="lucys", name=run_name, resume=saved_run_id
+                project="yay-robot", entity="$your_wandb_entity", name=run_name, resume=saved_run_id
             )
         else:
             wandb.init(
                 project="yay-robot",
-                entity="lucys",
+                entity="$your_wandb_entity",
                 name=run_name,
                 config=args,
                 resume="allow",

@@ -181,14 +181,14 @@ def main(args):
                     saved_run_id = f.read().strip()
                 wandb.init(
                     project="yay-robot",
-                    entity="lucys",
+                    entity="$your_wandb_entity",
                     name=run_name,
                     resume=saved_run_id,
                 )
             else:
                 wandb.init(
                     project="yay-robot",
-                    entity="lucys",
+                    entity="$your_wandb_entity",
                     name=run_name,
                     config=args,
                     resume="allow",
