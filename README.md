@@ -47,7 +47,7 @@ alias launch='conda activate yay && cd-ps'
 alias launchl='conda activate yay && cd-lc'
 ```
 
-* Teleoperation
+### Teleoperation
 ```bash
 # ROS terminal
 ros-init
@@ -76,14 +76,14 @@ We used this [lavalier microphone](https://a.co/d/5yS4eBN) and this [foot pedal]
 
 The following commands use `aloha_bag` as an example task. Feel free to replace it with your own task name and put its specs in [constants.py](src/aloha_pro/aloha_scripts/constants.py).
 
-* Data collection
+### Data collection
 ```bash
 # Collect mutliple episodes 
 launchl
 python3 aloha_pro/aloha_scripts/record_episodes.py --task_name aloha_bag --num_episodes 3
 ```
 
-* Verification
+### Verification
 ```bash
 # (Optional) Visualize episode
 python3 aloha_pro/aloha_scripts/visualize_episodes.py --dataset_dir $PATH_TO_DATASET/aloha_bag --episode_idx 0
@@ -95,7 +95,7 @@ python3 aloha_pro/aloha_scripts/visualize_episodes_audio.py --dataset_dir $PATH_
 python3 aloha_pro/aloha_scripts/replay_episodes.py --dataset_dir $PATH_TO_DATASET/aloha_bag --episode_idx 0
 ```
 
-* Data Processing
+### Data Processing
 ```bash
 # Transcibe all audio files in the dataset_dir
 cd ..
@@ -110,13 +110,13 @@ python script/instruction_segmentation.py --count --dataset_dir $PATH_TO_DATASET
 ```
 
 ## Training and Evaluation
-* Method Diagram
+### Method Diagram
 ![](assets/method.jpeg)
 
-* Architecture
+### Architecture
 ![](assets/architecture.png)
 
-* Train Low-Level Policy
+### Train Low-Level Policy
 
 You may put a list of dataset names after `--task_name`. These datasets will be automatically concatenated.
 
@@ -130,7 +130,7 @@ python act/imitate_episodes.py \
     --image_encoder efficientnet_b3film --seed 0 --log_wandb
 ```
 
-* Train High-Level Policy
+### Train High-Level Policy
 ```bash
 launchl
 python instructor/train.py \
@@ -140,7 +140,7 @@ python instructor/train.py \
     --history_skip_frame 50 --prediction_offset 20 --history_len 3 --seed 0 --log_wandb
 ```
 
-* Deploy
+### Deploy
 
 Please put the ckpt number you want to evaluate in [imitate_episodes.py](src/act/imitate_episodes.py).
 ```bash
@@ -155,7 +155,7 @@ python act/imitate_episodes.py \
     --instructor_path $YOUR_CKPT_PATH/hl_ckpt/aloha_bag/epoch_14900.ckpt
 ```
 
-* Language Intervention
+### Language Intervention
 
 The most reliable method is keyboard input: during policy deployment, the operator can press '2' (or step on the second pedal) to freeze the robot, and then type in the correction. We also implemented real-time audio transcription and intervention. The operator can say "stop" / "pardon" / "wait" to pause the robot, and then speak the correction. The audio will be transcribed for the robot to follow. This isn't as reliable as keyboard input when the environment is noisy, or there are heavy-duty jobs running on the same machine. So, we also implemented a walkie-talkie mode, where the machine prioritizes listening to human speech over policy execution when the second pedal (or, get a button!) is pressed.
 
@@ -171,7 +171,7 @@ python real_time_whisper.py --energy_threshold 200 --record_timeout 0.1 --phrase
 
 The correction data will be automatically saved in `$LAST_DATASET_DIR_language_correction` for post-training.
 
-* Post-Training
+### Post-Training
 
 Please create a separate directory (eg. `aloha_bag_lc01`) to store the latest ckpt from the high-level policy. For example, copy `$YOUR_CKPT_PATH/hl_ckpt/aloha_bag/epoch_14900.ckpt` to `$YOUR_CKPT_PATH/hl_ckpt/aloha_bag_lc01/epoch_0.ckpt`. Then, run:
 
