@@ -9,10 +9,7 @@ import cv2
 import json
 from torchvision import transforms
 import sys
-
-sys.path.append("/home/lucyshi/code/yay_robot/src")  # to import aloha
-sys.path.append("/iris/u/lucyshi/yay_robot/src")  # for cluster
-
+sys.path.append("$PATH_TO_YAY_ROBOT/src")  # to import aloha
 from aloha_pro.aloha_scripts.utils import crop_resize
 
 CROP_TOP = True  # hardcode

@@ -18,9 +18,7 @@ import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import threading
 import sys
-sys.path.append("/home/lucyshi/code/yay_robot/src")  # to import aloha
-sys.path.append("/iris/u/lucyshi/yay_robot/src")  # for cluster
-sys.path.append("/home/huzheyuan/Desktop/yay_robot/src")  # for zheyuan
+sys.path.append("$PATH_TO_YAY_ROBOT/src")  # to import aloha
 from tqdm import tqdm
 from PIL import Image, ImageDraw, ImageFont
 from sklearn.manifold import TSNE
@@ -374,12 +372,12 @@ if __name__ == "__main__":
             with open(wandb_run_id_path, "r") as f:
                 saved_run_id = f.read().strip()
             wandb.init(
-                project="yay-robot", entity="$your_wandb_entity", name=run_name, resume=saved_run_id
+                project="yay-robot", entity="$WANDB_ENTITY", name=run_name, resume=saved_run_id
             )
         else:
             wandb.init(
                 project="yay-robot",
-                entity="$your_wandb_entity",
+                entity="$WANDB_ENTITY",
                 name=run_name,
                 config=args,
                 resume="allow",

@@ -1,7 +1,5 @@
 import sys
-sys.path.append("/home/lucyshi/code/yay_robot/src")  # to import aloha
-sys.path.append("/iris/u/lucyshi/yay_robot/src")  # for cluster
-sys.path.append("/home/huzheyuan/Desktop/yay_robot/src")  # to import aloha
+sys.path.append("$PATH_TO_YAY_ROBOT/src")  # to import aloha
 import torch
 import numpy as np
 import os
@@ -181,14 +179,14 @@ def main(args):
                     saved_run_id = f.read().strip()
                 wandb.init(
                     project="yay-robot",
-                    entity="$your_wandb_entity",
+                    entity="$WANDB_ENTITY",
                     name=run_name,
                     resume=saved_run_id,
                 )
             else:
                 wandb.init(
                     project="yay-robot",
-                    entity="$your_wandb_entity",
+                    entity="$WANDB_ENTITY",
                     name=run_name,
                     config=args,
                     resume="allow",

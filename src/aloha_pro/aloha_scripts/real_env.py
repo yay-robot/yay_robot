@@ -16,9 +16,7 @@ from constants import (
 )
 from constants import PUPPET_GRIPPER_JOINT_OPEN, PUPPET_GRIPPER_JOINT_CLOSE
 import sys
-
-sys.path.append("/home/lucyshi/code/yay_robot/src/aloha_pro/aloha_scripts/")
-sys.path.append("/home/huzheyuan/Desktop/yay_robot/src/aloha_pro/aloha_scripts/")
+sys.path.append("$PATH_TO_YAY_ROBOT/src/aloha_pro/aloha_scripts/")
 from robot_utils import Recorder, ImageRecorder
 from robot_utils import setup_master_bot, setup_puppet_bot, move_arms, move_grippers
 from interbotix_xs_modules.arm import InterbotixManipulatorXS

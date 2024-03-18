@@ -20,10 +20,7 @@ import wavio
 from pynput import keyboard
 import signal
 import sys
-
-sys.path.append("/home/lucyshi/code/yay_robot/src")  # to import aloha
-sys.path.append("/iris/u/lucyshi/yay_robot/src")  # for cluster
-sys.path.append("/home/huzheyuan/Desktop/yay_robot/src")  # for zheyuan
+sys.path.append("$PATH_TO_YAY_ROBOT/src")  # to import aloha
 from constants import DT, START_ARM_POSE, TASK_CONFIGS
 from constants import (
     MASTER_GRIPPER_JOINT_MID,

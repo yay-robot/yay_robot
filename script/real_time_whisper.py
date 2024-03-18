@@ -3,8 +3,7 @@ import os
 import sys
 from sys import platform
 
-sys.path.append("/home/lucyshi/code/yay_robot/src")
-sys.path.append("/home/huzheyuan/Desktop/yay_robot/src")
+sys.path.append("$PATH_TO_YAY_ROBOT/src")
 from aloha_pro.aloha_scripts.audio_utils import AudioTranscriber
 import rospy
 from std_msgs.msg import String

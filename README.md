@@ -47,21 +47,7 @@ alias launch='conda activate yay && cd-ps'
 alias launchl='conda activate yay && cd-lc'
 ```
 
-## Python Path Fixes
-When running the following files:
-```bash
-yay_robot\script\encode_instruction.py
-yay_robot\script\instruction_segmentation.py
-yay_robot\script\real_time_whisper.py
-yay_robot\script\transcribe.py
-yay_robot\src\act\imitate_episodes.py
-yay_robot\src\act\utils.py
-yay_robot\src\aloha_pro\aloha_scripts\real_env.py
-yay_robot\src\aloha_pro\aloha_scripts\record_episodes.py
-yay_robot\src\instructor\dataset.py
-yay_robot\src\instructor\train.py
-```
-Please add `sys.path.append("your_dir/yay_robot/src")` to avoid Python module import errors.
+Please global search for `$PATH_TO_YAY_ROBOT` and replace it with your path to this repository (.../yay_robot). This is useful for adding `sys.path.append("$PATH_TO_YAY_ROBOT/src")` to avoid Python module import errors.
 
 ### Teleoperation
 ```bash
@@ -90,7 +76,10 @@ To implement this distinction, we use foot pedals during data collection. When n
 
 We used this [lavalier microphone](https://a.co/d/5yS4eBN) and this [foot pedal](https://a.co/d/ihOs7Mn) for data collection.
 
+Please global search for `$PATH_TO_DATASET` and replace it with your path.
+
 The following commands use `aloha_bag` as an example task. Feel free to replace it with your own task name and put its specs in [constants.py](src/aloha_pro/aloha_scripts/constants.py).
+
 
 ### Data collection
 ```bash
@@ -131,6 +120,8 @@ python script/instruction_segmentation.py --count --dataset_dir $PATH_TO_DATASET
 
 ### Architecture
 ![](assets/architecture.png)
+
+Please replace `$WANDB_ENTITY` with your wandb entity.
 
 ### Train Low-Level Policy
 
@@ -194,7 +185,7 @@ Please create a separate directory (eg. `aloha_bag_lc01`) to store the latest ck
 ```bash
 launchl
 python instructor/train.py \
-    --task_name aloha_bag ... aloha_bag_v2_language_correction \
+    --task_name aloha_bag ... $LAST_DATASET_DIR_language_correction \
     --ckpt_dir $YOUR_CKPT_PATH/hl_ckpt/aloha_bag_lc01 \
     --batch_size 64 --num_epochs 5000 --lr 1e-4 --dagger_ratio 0.1\
     --history_skip_frame 50 --prediction_offset 20 --history_len 3 --seed 0 --log_wandb

@@ -1,7 +1,5 @@
 ### Task parameters
-DATA_DIR = "/scr/lucyshi/dataset"
-# DATA_DIR = '/data2/data_collection'
-# DATA_DIR = '/iris/u/lucyshi/yay_robot/data/act' # for cluster
+DATA_DIR = "$PATH_TO_DATASET"
 TASK_CONFIGS = {
     "aloha_test": {
         "dataset_dir": DATA_DIR + "/aloha_test",

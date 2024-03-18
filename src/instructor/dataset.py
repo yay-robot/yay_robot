@@ -5,9 +5,7 @@ import h5py
 import cv2
 import json
 import sys
-
-sys.path.append("/home/lucyshi/code/yay_robot/src")  # to import aloha
-sys.path.append("/iris/u/lucyshi/yay_robot/src")  # for cluster
+sys.path.append("$PATH_TO_YAY_ROBOT/src")  # to import aloha
 from torch.utils.data import DataLoader, ConcatDataset
 
 from aloha_pro.aloha_scripts.utils import crop_resize, random_crop

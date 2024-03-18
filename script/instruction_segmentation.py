@@ -13,11 +13,8 @@ import argparse
 from tqdm import tqdm
 import glob
 from collections import Counter
-
 import sys
-
-sys.path.append("/home/lucyshi/code/yay_robot/src")  # to import aloha
-sys.path.append("/home/huzheyuan/Desktop/yay_robot/src")
+sys.path.append("$PATH_TO_YAY_ROBOT/src")  # to import aloha
 from aloha_pro.aloha_scripts.utils import break_text, modify_transcription
 
 

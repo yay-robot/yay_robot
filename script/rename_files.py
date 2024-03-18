@@ -1,6 +1,6 @@
 import os
 
-directory = "/scr/lucyshi/dataset/aloha_bag_3_objects_d2_v1"
+directory = "$PATH_TO_DATASET/aloha_bag"
 
 # Filenames pattern
 file_types = [".hdf5", ".json", ".txt", ".wav"]
