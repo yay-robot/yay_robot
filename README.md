@@ -179,7 +179,7 @@ Please create a separate directory (eg. `aloha_bag_lc01`) to store the latest ck
 launchl
 python instructor/train.py \
     --task_name aloha_bag ... aloha_bag_v2_language_correction \
-    --ckpt_dir /scr/lucyshi/hl_ckpt/aloha_bag_lc01 \
+    --ckpt_dir $YOUR_CKPT_PATH/hl_ckpt/aloha_bag_lc01 \
     --batch_size 64 --num_epochs 5000 --lr 1e-4 --dagger_ratio 0.1\
     --history_skip_frame 50 --prediction_offset 20 --history_len 3 --seed 0 --log_wandb
 ```
