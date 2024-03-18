@@ -47,6 +47,22 @@ alias launch='conda activate yay && cd-ps'
 alias launchl='conda activate yay && cd-lc'
 ```
 
+## Python Path Fixes
+When running the following files:
+```bash
+yay_robot\script\encode_instruction.py
+yay_robot\script\instruction_segmentation.py
+yay_robot\script\real_time_whisper.py
+yay_robot\script\transcribe.py
+yay_robot\src\act\imitate_episodes.py
+yay_robot\src\act\utils.py
+yay_robot\src\aloha_pro\aloha_scripts\real_env.py
+yay_robot\src\aloha_pro\aloha_scripts\record_episodes.py
+yay_robot\src\instructor\dataset.py
+yay_robot\src\instructor\train.py
+```
+Please add `sys.path.append("your_dir/yay_robot/src")` to avoid Python module import errors.
+
 ### Teleoperation
 ```bash
 # ROS terminal
