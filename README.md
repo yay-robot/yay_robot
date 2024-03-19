@@ -191,9 +191,14 @@ python instructor/train.py \
     --history_skip_frame 50 --prediction_offset 20 --history_len 3 --seed 0 --log_wandb
 ```
 
-<!-- ## Citation
+## Citation
 
 If you find our code useful for your research, please cite:
 ```
-TODO
-``` -->
+@misc{shi2024yell,
+    title = {Yell At Your Robot: Improving On-the-Fly from Language Corrections},
+    author = {Lucy Xiaoyang Shi and Zheyuan Hu and Tony Z. Zhao and Archit Sharma and Karl Pertsch and Jianlan Luo and Sergey Levine and Chelsea Finn},
+    url = {https://yay-robot.github.io/},
+    year = {2024},
+}
+```
