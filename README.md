@@ -191,9 +191,9 @@ python instructor/train.py \
     --history_skip_frame 50 --prediction_offset 20 --history_len 3 --seed 0 --log_wandb
 ```
 
-## Citation
+<!-- ## Citation
 
 If you find our code useful for your research, please cite:
 ```
 TODO
-```
+``` -->
