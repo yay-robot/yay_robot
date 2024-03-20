@@ -1,6 +1,6 @@
 # Yell At Your Robot (YAY Robot)
 
-[[Project website](https://yay-robot.github.io/)] [[Paper]()]
+[[Project website](https://yay-robot.github.io/)] [[Paper](https://arxiv.org/abs/2403.12910)]
 
 
 Yell At Your Robot (YAY Robot) leverages verbal corrections to improve robot performance on complex long-horizon tasks. It can incorporate language corrections in real-time and for continuous improvement.
@@ -195,10 +195,10 @@ python instructor/train.py \
 
 If you find our code useful for your research, please cite:
 ```
-@misc{shi2024yell,
-    title = {Yell At Your Robot: Improving On-the-Fly from Language Corrections},
-    author = {Lucy Xiaoyang Shi and Zheyuan Hu and Tony Z. Zhao and Archit Sharma and Karl Pertsch and Jianlan Luo and Sergey Levine and Chelsea Finn},
-    url = {https://yay-robot.github.io/},
-    year = {2024},
+@article{shi2024yell,
+  title   = {Yell At Your Robot: Improving On-the-Fly from Language Corrections},
+  author  = {Lucy Xiaoyang Shi and Zheyuan Hu and Tony Z. Zhao and Archit Sharma and Karl Pertsch and Jianlan Luo and Sergey Levine and Chelsea Finn},
+  year    = {2024},
+  journal = {arXiv preprint arXiv: 2403.12910}
 }
 ```
