@@ -121,11 +121,10 @@ python script/instruction_segmentation.py --count --dataset_dir $PATH_TO_DATASET
 ### Architecture
 ![](assets/architecture.png)
 
-Please replace `$WANDB_ENTITY` with your wandb entity.
 
 ### Train Low-Level Policy
 
-You may put a list of dataset names after `--task_name`. These datasets will be automatically concatenated.
+You may put a list of dataset names after `--task_name`. These datasets will be automatically concatenated. Please replace `$WANDB_ENTITY` with your wandb entity.
 
 ```bash
 launchl
